@@ -88,16 +88,8 @@ def aligner(lignes: list[dict], reconnus: list[dict], duree: float, decalage: fl
         for k in range(bloc.size):
             f, w = fournis[bloc.a + k], reconnus[bloc.b + k]
             f["debut"], f["fin"] = w["debut"], w["fin"]
-    # mots non reconnus : horaire de la ligne .lrc si connu, sinon entre les voisins reconnus
-    for f in fournis:
-        if "debut" not in f and f["ligne_debut"] is not None:
-            fin_l = (f["ligne_fin"] if f["ligne_fin"] is not None else f["ligne_debut"] + 3.0)
-            pas = (fin_l - f["ligne_debut"]) / max(f["nb"], 1)
-            f["debut"] = f["ligne_debut"] - decalage + f["rang"] * pas
-            f["fin"] = f["debut"] + pas * 0.9
+    # 1) mots non reconnus ENTRE deux mots reconnus : répartis entre leurs voisins
     connus = [i for i, f in enumerate(fournis) if "debut" in f]
-    if not connus:
-        return []
     for i, f in enumerate(fournis):
         if "debut" in f:
             continue
@@ -109,8 +101,17 @@ def aligner(lignes: list[dict], reconnus: list[dict], duree: float, decalage: fl
         pas = max(t1 - t0, 0.05) / (apres - avant)
         f["debut"] = t0 + (i - avant - 0.5) * pas
         f["fin"] = f["debut"] + pas * 0.9
+    # 2) les autres : horaire de leur ligne .lrc si on le connaît
+    for f in fournis:
+        if "debut" not in f and f["ligne_debut"] is not None:
+            fin_l = (f["ligne_fin"] if f["ligne_fin"] is not None else f["ligne_debut"] + 3.0)
+            pas = (fin_l - f["ligne_debut"]) / max(f["nb"], 1)
+            f["debut"] = f["ligne_debut"] - decalage + f["rang"] * pas
+            f["fin"] = f["debut"] + pas * 0.9
+    if not any("debut" in f for f in fournis):
+        return []
     sortie = [{"debut": round(f["debut"], 2), "fin": round(f["fin"], 2), "mot": f["mot"], "phrase": f["phrase"]}
-              for f in fournis if "debut" in f and -0.2 <= f["debut"] <= duree]
+              for f in fournis if "debut" in f and -0.2 <= f["debut"] < duree - 0.2]
     sortie.sort(key=lambda x: x["debut"])
     return sortie
 
