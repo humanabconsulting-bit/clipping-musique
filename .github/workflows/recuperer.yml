@@ -1,0 +1,46 @@
+name: Récupérer une vidéo
+
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "Code de la vidéo (ex. M0012)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: musique-donnees
+  cancel-in-progress: false
+
+env:
+  DEPOT_DONNEES: humanabconsulting-bit/clipping-musique-donnees
+  DONNEES: donnees
+  GH_REPO: humanabconsulting-bit/clipping-musique-donnees
+  GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  I_CODE: ${{ inputs.code }}
+
+jobs:
+  recuperer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparer
+        with:
+          jeton: ${{ secrets.DONNEES_TOKEN }}
+      - name: "🔁 Récupérer"
+        run: python -m musique.recuperer "$I_CODE"
+      - name: "📊 Sauvegarde"
+        env:
+          MESSAGE: "Vidéo ${{ inputs.code }} récupérée"
+        run: |
+          cd donnees
+          git config user.name "clipping-musique-bot"
+          git config user.email "clipping-musique-bot@users.noreply.github.com"
+          git add data/ && git diff --cached --quiet && exit 0
+          git commit -q -m "$MESSAGE"
+          for i in 1 2 3 4; do git pull -q --rebase && git push -q && exit 0; sleep $((i * 5)); done
+          exit 1

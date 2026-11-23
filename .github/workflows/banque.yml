@@ -1,0 +1,41 @@
+name: "Banque : indexer"
+
+# Après avoir déposé des vidéos dans la Release « banque » : analyse les nouvelles (durée, couleurs, mouvement…).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: musique-donnees
+  cancel-in-progress: false
+
+env:
+  DEPOT_DONNEES: humanabconsulting-bit/clipping-musique-donnees
+  DONNEES: donnees
+  GH_REPO: humanabconsulting-bit/clipping-musique-donnees
+  GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
+
+jobs:
+  indexer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparer
+        with:
+          jeton: ${{ secrets.DONNEES_TOKEN }}
+      - name: "🗂️ Indexer la banque"
+        run: python -m musique.banque indexer
+      - name: "📊 Sauvegarde"
+        env:
+          MESSAGE: "Banque lifestyle indexée"
+        run: |
+          cd donnees
+          git config user.name "clipping-musique-bot"
+          git config user.email "clipping-musique-bot@users.noreply.github.com"
+          git add data/ && git diff --cached --quiet && exit 0
+          git commit -q -m "$MESSAGE"
+          for i in 1 2 3 4; do git pull -q --rebase && git push -q && exit 0; sleep $((i * 5)); done
+          exit 1

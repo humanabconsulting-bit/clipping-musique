@@ -1,0 +1,135 @@
+name: Clips musique
+
+# Lancement à la demande : Actions > « Clips musique » > Run workflow (aussi depuis l'appli GitHub).
+# Dépôt public = minutes GitHub Actions gratuites et illimitées ; les données restent dans le dépôt privé.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode"
+        type: choice
+        options: [clip, video, son, lifestyle]
+        default: clip
+      source:
+        description: "Fichier déposé dans la Release « entrees » (ex. ninho_jefe.mp4) ou lien"
+        required: false
+        default: ""
+      artiste:
+        description: "Clé de l'artiste (config/reglages.json)"
+        required: false
+        default: ""
+      titre:
+        description: "Titre du son"
+        required: false
+        default: ""
+      nb_clips:
+        description: "Nombre de clips"
+        default: "4"
+      duree:
+        description: "Durée (s), ex. 15-30"
+        default: "15-30"
+      texte:
+        description: "Texte sur la vidéo"
+        type: choice
+        options: [tout, paroles, accroche, perso, aucun]
+        default: tout
+      texte_perso:
+        description: "Texte perso (si texte = perso)"
+        default: ""
+      paroles_fichier:
+        description: "Paroles .txt ou .lrc (Release « entrees »), optionnel"
+        default: ""
+      debut_fin:
+        description: "Forcer un passage, ex. 1:12-1:40 (vide = automatique)"
+        default: ""
+      visuels:
+        description: "Visuels (modes son)"
+        type: choice
+        options: [pexels, banque, clip_artiste]
+        default: pexels
+      options:
+        description: "Avancé : --clip <fichier> --tags nuit,voiture"
+        default: ""
+      demo:
+        description: "Mode démo (aucun fichier)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: musique-donnees
+  cancel-in-progress: false
+
+env:
+  DEPOT_DONNEES: humanabconsulting-bit/clipping-musique-donnees
+  DONNEES: donnees
+  GH_REPO: humanabconsulting-bit/clipping-musique-donnees
+  GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  I_MODE: ${{ inputs.mode }}
+  I_SOURCE: ${{ inputs.source }}
+  I_ARTISTE: ${{ inputs.artiste }}
+  I_TITRE: ${{ inputs.titre }}
+  I_NB: ${{ inputs.nb_clips }}
+  I_DUREE: ${{ inputs.duree }}
+  I_TEXTE: ${{ inputs.texte }}
+  I_TEXTE_PERSO: ${{ inputs.texte_perso }}
+  I_PAROLES: ${{ inputs.paroles_fichier }}
+  I_DEBUT_FIN: ${{ inputs.debut_fin }}
+  I_VISUELS: ${{ inputs.visuels }}
+  I_OPTIONS: ${{ inputs.options }}
+  MODE_DEMO: ${{ inputs.demo }}
+
+jobs:
+  clips:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: "📥 Code"
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/preparer
+        with:
+          jeton: ${{ secrets.DONNEES_TOKEN }}
+
+      - name: "🔎 1. Analyse du morceau + choix des passages"
+        run: |
+          DEBUT="${I_DEBUT_FIN%%-*}"; FIN="${I_DEBUT_FIN#*-}"
+          [ -z "$I_DEBUT_FIN" ] && DEBUT="" && FIN=""
+          VIS=""; case "$I_MODE" in son) VIS="$I_VISUELS";; esac
+          read -r -a OPTS <<< "$I_OPTIONS"
+          python -m musique.run recherche --mode "$I_MODE" --source "$I_SOURCE" --artiste "$I_ARTISTE" \
+            --titre "$I_TITRE" --nb "$I_NB" --duree "$I_DUREE" --texte "$I_TEXTE" --texte-perso "$I_TEXTE_PERSO" \
+            --paroles "$I_PAROLES" --debut "$DEBUT" --fin "$FIN" ${VIS:+--visuels "$VIS"} "${OPTS[@]}" \
+            $( [ "$MODE_DEMO" = "true" ] && echo --demo )
+
+      - name: "🎬 2. Montage vertical + texte"
+        run: python -m musique.run montage
+
+      - name: "📤 3. Envoi des vidéos (Release privée)"
+        run: python -m musique.run envoi
+
+      - name: "📊 4. Sauvegarde des données"
+        run: |
+          cd donnees
+          git config user.name "clipping-musique-bot"
+          git config user.email "clipping-musique-bot@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            (cd .. && python -m musique.run sauvegarde)
+            git add data/
+            git diff --cached --quiet && exit 0
+            git commit -q -m "Clips musique : passage ${{ github.run_id }}"
+            git push -q origin HEAD:main && exit 0
+            sleep $((i * 7))
+          done
+          exit 1
+
+      - name: "🎞️ Aperçu (mode démo)"
+        if: inputs.demo
+        uses: actions/upload-artifact@v4
+        with:
+          name: clips-demo
+          path: sortie/*.mp4
+          retention-days: 3

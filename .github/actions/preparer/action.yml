@@ -1,0 +1,40 @@
+name: Préparer
+description: Données privées + Python + ffmpeg + polices (partagé par tous les workflows)
+inputs:
+  lourd:
+    description: "installer les outils de montage (librosa, whisper, mediapipe…)"
+    default: "true"
+  jeton:
+    description: "jeton d'accès au dépôt de données privé"
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: "🔐 Données privées"
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ env.DEPOT_DONNEES }}
+        token: ${{ inputs.jeton }}
+        path: donnees
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: pip
+        cache-dependency-path: requirements.txt
+    - name: "🧰 Outils"
+      shell: bash
+      run: |
+        if [ "${{ inputs.lourd }}" = "true" ]; then
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-core > /dev/null
+          pip install -q -r requirements.txt
+        else
+          pip install -q requests
+        fi
+    - name: "💾 Cache des modèles (Whisper, visages)"
+      if: inputs.lourd == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/huggingface
+          ~/.cache/clipping-musique
+        key: modeles-v1

@@ -1,0 +1,56 @@
+name: Valider ou rejeter
+
+# En attendant le tableau de bord : valider / rejeter des vidéos par leur code (aussi depuis l'appli GitHub).
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [valider, rejeter, liste]
+        default: valider
+      codes:
+        description: "Codes séparés par des espaces (ex. M0001 M0002)"
+        default: ""
+      raison:
+        description: "Raison du rejet (optionnel)"
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: musique-donnees
+  cancel-in-progress: false
+
+env:
+  DEPOT_DONNEES: humanabconsulting-bit/clipping-musique-donnees
+  DONNEES: donnees
+  GH_REPO: humanabconsulting-bit/clipping-musique-donnees
+  GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
+  I_ACTION: ${{ inputs.action }}
+  I_CODES: ${{ inputs.codes }}
+  I_RAISON: ${{ inputs.raison }}
+
+jobs:
+  decider:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparer
+        with:
+          jeton: ${{ secrets.DONNEES_TOKEN }}
+          lourd: "false"
+      - name: "✅ Décision"
+        run: python -m musique.decider "$I_ACTION" $I_CODES --raison "$I_RAISON"
+      - name: "📊 Sauvegarde"
+        env:
+          MESSAGE: "Décisions : ${{ inputs.action }} ${{ inputs.codes }}"
+        run: |
+          cd donnees
+          git config user.name "clipping-musique-bot"
+          git config user.email "clipping-musique-bot@users.noreply.github.com"
+          git add data/ && git diff --cached --quiet && exit 0
+          git commit -q -m "$MESSAGE"
+          for i in 1 2 3 4; do git pull -q --rebase && git push -q && exit 0; sleep $((i * 5)); done
+          exit 1

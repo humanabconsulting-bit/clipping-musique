@@ -1,0 +1,13 @@
+# Clipping Musique — tout est gratuit et tourne sur le processeur (aucune IA payante)
+requests>=2.31
+yt-dlp>=2025.1.1
+numpy>=1.26
+soundfile>=0.12
+librosa>=0.10          # tempo, beats, énergie, auto-similarité (refrain / drop)
+faster-whisper>=1.0    # paroles mot par mot
+mediapipe>=0.10.14     # visages (recadrage qui suit le rappeur)
+scenedetect>=0.6.4     # changements de plan
+opencv-python-headless>=4.8,<5
+nudenet>=3.4           # contrôle nudité
+# Option (lent, ~1 Go) : séparation de la voix, activée par le réglage separer_voix
+# demucs>=4.0

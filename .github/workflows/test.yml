@@ -1,0 +1,42 @@
+name: Test (mode démo)
+
+# À chaque modification du code : les 4 modes en démo (sans fichier, sans clé, sans données privées).
+on:
+  push:
+    branches: [main]
+    paths: ["musique/**", "requirements.txt", ".github/workflows/test.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: "🧰 Outils"
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-core > /dev/null
+          pip install -q -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/clipping-musique
+          key: modeles-v1
+      - name: "🎬 Démo — clip"
+        run: python -m musique.run --demo --mode clip --nb 1 && mkdir -p apercu && mv sortie/*.mp4 apercu/
+      - name: "🎬 Démo — son"
+        run: python -m musique.run --demo --mode son --nb 1 && mv sortie/*.mp4 apercu/
+      - name: "🎬 Démo — lifestyle"
+        run: python -m musique.run --demo --mode lifestyle --nb 1 && mv sortie/*.mp4 apercu/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apercu-demo
+          path: apercu/
+          retention-days: 3

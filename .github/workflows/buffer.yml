@@ -1,0 +1,29 @@
+name: "Buffer : vérifier"
+
+# Liste les chaînes du compte Buffer « musique » (lecture seule) : sert à trouver le buffer_id de la chaîne TikTok.
+on:
+  workflow_dispatch:
+    inputs:
+      commande:
+        type: choice
+        options: [canaux, posts, limites]
+        default: canaux
+
+permissions:
+  contents: read
+
+jobs:
+  buffer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BUFFER_API_KEY_MUSIQUE: ${{ secrets.BUFFER_API_KEY_MUSIQUE }}
+      I_CMD: ${{ inputs.commande }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install -q requests
+          python -m musique.buffer "$I_CMD"

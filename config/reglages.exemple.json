@@ -1,0 +1,48 @@
+{
+  "artistes": [
+    {
+      "cle": "demo",
+      "nom": "Artiste Démo",
+      "tiktok": "@artiste_demo",
+      "accord": false,
+      "accord_note": "Exemple : accord donné par DM Instagram le JJ/MM/AAAA (capture gardée)",
+      "contenu_de_marque": false,
+      "hashtags": "",
+      "pexels_mots": ["city night", "street", "neon lights"]
+    }
+  ],
+  "nb_clips": 4,
+  "duree_min_secondes": 15,
+  "duree_max_secondes": 30,
+  "modele_whisper": "small",
+  "modele_whisper_paroles": "medium",
+  "transcrire_morceau": true,
+  "separer_voix": false,
+  "langue": null,
+  "visuels_defaut": "pexels",
+  "zooms": true,
+  "taux_visages_min": 0.25,
+  "budget_montage_minutes": 50,
+  "hashtags": "#RapFR #Rap",
+  "auto_approuver": false,
+  "supprimer_apres_heures": 72,
+  "fuseau": "Europe/Paris",
+  "publication_auto": false,
+  "buffer_file_max": 10,
+  "hebergeur": "github",
+  "depot_public": "humanabconsulting-bit/media-temp",
+  "prefixe_public": "musique-",
+  "fenetre_heures": 6,
+  "chaines": [
+    {
+      "nom": "TikTok musique (nom à donner)",
+      "plateforme": "TikTok",
+      "service": "tiktok",
+      "buffer_cle": "BUFFER_API_KEY_MUSIQUE",
+      "buffer_id": "",
+      "actif": false,
+      "par_jour": 3,
+      "heures": [12, 18, 21]
+    }
+  ]
+}
