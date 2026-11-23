@@ -1,0 +1,35 @@
+name: Installation (une seule fois)
+
+# Crée les Releases du dépôt de données privé (entrees, banque) et vérifie les accès.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GH_REPO: humanabconsulting-bit/clipping-musique-donnees
+  GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
+
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "🔐 Accès au dépôt de données"
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "❌ Secret DONNEES_TOKEN absent"; exit 1; fi
+          gh repo view "$GH_REPO" --json name -q .name && echo "✔ dépôt de données accessible"
+      - name: "📦 Releases"
+        run: |
+          gh release view entrees >/dev/null 2>&1 || gh release create entrees --title "Entrées (sons, vidéos, paroles)" \
+            --notes "Dépose ici les fichiers à traiter : clips, vidéos, sons (mp3/wav/m4a), paroles (.txt/.lrc). Nom conseillé : cle-artiste_titre.ext (ex. ninho_jefe.mp3)."
+          gh release view banque >/dev/null 2>&1 || gh release create banque --title "Banque lifestyle" \
+            --notes "Dépose ici tes vidéos lifestyle. Le nom donne les tags (ex. voiture_nuit_ville.mp4). Puis lance « Banque : indexer »."
+          gh release list
+      - name: "🌐 Dépôt public tampon (publication, plus tard)"
+        env:
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          if [ -z "$PUBLIC_REPO_TOKEN" ]; then echo "ℹ PUBLIC_REPO_TOKEN pas encore ajouté (nécessaire seulement pour publier)"; exit 0; fi
+          GH_TOKEN="$PUBLIC_REPO_TOKEN" gh repo view humanabconsulting-bit/media-temp --json name -q .name && echo "✔ media-temp accessible"
