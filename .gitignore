@@ -5,3 +5,6 @@ travail/
 sortie/
 donnees/
 .env
+# Les données vivent dans le dépôt privé clipping-musique-donnees (jamais ici, dépôt public)
+data/
+config/reglages.json
