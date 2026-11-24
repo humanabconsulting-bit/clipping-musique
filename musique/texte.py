@@ -21,6 +21,7 @@ CENTRE_X = (1080 - MARGE_DROITE) // 2 + 20     # centre décalé vers la gauche,
 Y_PAROLES = 1920 - MARGE_BAS - 180            # bas des paroles (ancrage en bas) : 1420
 Y_ACCROCHE = MARGE_HAUT + 40                  # haut de l'accroche : 220
 Y_MILIEU = 960                                # paroles « au milieu » (style deux couleurs)
+Y_NEON = 880                                  # style néon : un peu au-dessus du milieu, comme l'exemple
 
 JAUNE = "&H0000FFFF&"
 BLANC = "&HFFFFFF&"
@@ -105,6 +106,52 @@ def _deux_couleurs(mots: list[dict], duree: float, couleurs: tuple, y: int, par_
     return ev
 
 
+POLICE_NEON = "Montserrat Black"
+
+
+def _taille_mot(mot: str, base: int = 190, largeur_max: int = 900) -> int:
+    """Taille de police pour qu'un mot tienne en largeur (Montserrat Black ≈ 0,78 × taille par lettre)."""
+    return int(max(70, min(base, largeur_max / max(len(mot), 1) / 0.78)))
+
+
+def _neon(mots: list[dict], duree: float, couleurs: tuple, y: int) -> list[str]:
+    """Style de l'exemple (« vibe lyrics ») : UN mot à la fois au milieu de l'écran, énorme et très gras,
+    un mot sur deux blanc / couleur (rose néon par défaut), avec un halo lumineux et une petite apparition.
+    Les mots très courts (de, la, le…) sont collés au mot suivant, plus petits (comme « DE QUATRE »)."""
+    c1, c2 = couleur_ass(couleurs[0]), couleur_ass(couleurs[1])
+    ms = [w for w in mots if w["fin"] > 0 and w["debut"] < duree and nettoyer(w["mot"])]
+    # on regroupe les petits mots avec le suivant
+    blocs, att = [], []
+    for w in ms:
+        t = majuscules(nettoyer(w["mot"]))
+        if len(t) <= 2 and not att:
+            att = [dict(w, mot=t)]
+            continue
+        bloc = {"debut": (att[0]["debut"] if att else w["debut"]), "fin": w["fin"],
+                "petit": att[0]["mot"] if att else "", "mot": t}
+        blocs.append(bloc)
+        att = []
+    if att:
+        blocs.append({"debut": att[0]["debut"], "fin": att[0]["fin"], "petit": "", "mot": att[0]["mot"]})
+    ev = []
+    for i, b in enumerate(blocs):
+        fin = blocs[i + 1]["debut"] if i + 1 < len(blocs) and blocs[i + 1]["debut"] - b["fin"] < 0.8 else b["fin"] + 0.35
+        fin = min(max(fin, b["debut"] + 0.12), duree)
+        couleur = c2 if i % 2 == 1 else c1
+        taille = _taille_mot(b["mot"])
+        texte_mot = b["mot"]
+        if b["petit"]:
+            texte_mot = f"{{\\fs{int(taille * 0.42)}}}{b['petit']}\\N{{\\fs{taille}}}{b['mot']}"
+        apparition = "\\fscx118\\fscy118\\t(0,90,\\fscx100\\fscy100)"
+        debut_t, fin_t = _t(max(b["debut"], 0)), _t(fin)
+        # couche 1 : halo (même couleur, flouté, transparent) ; couche 2 : le mot net
+        ev.append(f"Dialogue: 3,{debut_t},{fin_t},Neon,,0,0,0,,{{\\an5\\pos(540,{y})\\fs{taille}"
+                  f"\\c{couleur}\\3c{couleur}\\bord14\\blur22\\alpha&H48&{apparition}}}{texte_mot}")
+        ev.append(f"Dialogue: 4,{debut_t},{fin_t},Neon,,0,0,0,,{{\\an5\\pos(540,{y})\\fs{taille}"
+                  f"\\c{couleur}\\3c&H101010&\\bord1.5\\blur0.6{apparition}}}{texte_mot}")
+    return ev
+
+
 def _karaoke(mots: list[dict], duree: float, par_groupe: int = 3, y: int = Y_PAROLES, ancre: int = 2) -> list[str]:
     """Paroles mot par mot : groupes de 2 à 4 mots, mot chanté en jaune."""
     ev = []
@@ -150,6 +197,7 @@ def fichier_ass(chemin: Path, duree: float, accroche: str = "", credit: str = ""
         "Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
         f"Style: Accroche,{POLICE},56,&H00FFFFFF,&H00FFFFFF,{couleur_cadre},{couleur_cadre},-1,0,0,0,100,100,0,0,3,14,0,8,70,{MARGE_DROITE},0,1",
         f"Style: Credit,{POLICE},38,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,8,60,{MARGE_DROITE},0,1",
+        f"Style: Neon,Montserrat Black,150,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,2,0,5,40,{MARGE_DROITE},0,1",
         f"Style: Paroles,{POLICE},84,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,7,3,2,60,{MARGE_DROITE},0,1",
         "", "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -164,7 +212,9 @@ def fichier_ass(chemin: Path, duree: float, accroche: str = "", credit: str = ""
     if credit:
         lignes.append(f"Dialogue: 0,{_t(0)},{_t(duree)},Credit,,0,0,0,,{{\\an8\\pos({CENTRE_X},{y_credit})}}"
                       f"{nettoyer(credit)}")
-    if mots and style_paroles == "deux_couleurs":
+    if mots and style_paroles == "neon":
+        lignes += _neon(mots, duree, couleurs, y_paroles or Y_NEON)
+    elif mots and style_paroles == "deux_couleurs":
         lignes += _deux_couleurs(mots, duree, couleurs, y_paroles or Y_MILIEU)
     elif mots:
         lignes += _karaoke(mots, duree, y=y_paroles, ancre=5) if y_paroles else _karaoke(mots, duree)

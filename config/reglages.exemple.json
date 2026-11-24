@@ -56,13 +56,21 @@
   "styles_paroles": {
     "clip": "karaoke",
     "video": "karaoke",
-    "son": "karaoke",
-    "lifestyle": "deux_couleurs",
+    "son": "neon",
+    "lifestyle": "neon",
     "react": "karaoke"
   },
   "couleurs_paroles": [
     "#FFFFFF",
     "#33B5FF",
     "#0B3D91"
-  ]
+  ],
+  "couleurs_neon": [
+    "#FFFFFF",
+    "#FF3DCB"
+  ],
+  "etalonnage": {
+    "lifestyle": "sombre",
+    "son": "sombre"
+  }
 }

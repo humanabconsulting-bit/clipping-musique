@@ -51,7 +51,9 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
   workflow : les journaux du dépôt public sont visibles par tous.
 
 ## Retours du propriétaire (24/11) — à faire
-- Typographie des paroles : plus GRANDE et plus GRASSE ; il va envoyer un exemple de style à copier.
+- ✅ Typographie : style « neon » d'après son exemple (vibe lyrics) : UN mot à la fois, Montserrat Black énorme,
+  blanc / rose néon (#FF3DCB) en alternance avec halo, images assombries (étalonnage « sombre »), pas d'accroche.
+  Réglages : styles_paroles, couleurs_neon, etalonnage. Pas encore fait : la texture « usée » des lettres.
 - Erreurs dans les paroles : privilégier un fichier de paroles (.txt/.lrc) ou le modèle Whisper `medium`.
 - Résolution : demander des sources en 1080p (la vidéo COLORS de test était en 640×360).
 - Façon de travailler : il annonce l'artiste, donne la matière (vidéos, clips), puis Claude lance le montage.

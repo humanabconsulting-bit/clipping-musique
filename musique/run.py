@@ -231,7 +231,10 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
         c.update(paroles_source=origine, langue=langue, paroles=" ".join(w["mot"] for w in mots))
         log(f"   paroles : {len(mots)} mot(s) ({origine}{', ' + langue if langue else ''})")
     # en mise en page react, le haut est le visage du streamer : pas d'accroche sauf si demandée exprès
-    avec_accroche = ("accroche", "perso") if c["mode"] == "react" else ("tout", "accroche", "perso")
+    style = (cfg.get("styles_paroles") or {}).get(c["mode"], "neon" if c["mode"] == "lifestyle" else "karaoke")
+    # react (visage du streamer en haut) et style néon (comme l'exemple) : pas d'accroche sauf demandée exprès
+    sans_accroche_auto = c["mode"] == "react" or style == "neon"
+    avec_accroche = ("accroche", "perso") if sans_accroche_auto else ("tout", "accroche", "perso")
     c["accroche"] = (c["texte_perso"] if c["texte"] == "perso" else legende.choisir_accroche(c, cfg)) \
         if c["texte"] in avec_accroche else ""
     if c["mode"] == "react":
@@ -239,11 +242,12 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
                                 y_paroles=react.Y_PAROLES_REACT, y_credit=react.Y_CREDIT_REACT)
     else:
         # style des paroles par mode (réglage styles_paroles) : karaoké jaune en bas, ou « deux couleurs » au milieu
-        style = (cfg.get("styles_paroles") or {}).get(c["mode"], "deux_couleurs" if c["mode"] == "lifestyle" else "karaoke")
         c["style_paroles"] = style
+        couleurs = (cfg.get("couleurs_neon") or ["#FFFFFF", "#FF3DCB"]) if style == "neon" else \
+            (cfg.get("couleurs_paroles") or ["#FFFFFF", "#33B5FF", "#0B3D91"])
         ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
-                                style_paroles=style, couleurs=tuple(cfg.get("couleurs_paroles") or
-                                                                    ("#FFFFFF", "#33B5FF", "#0B3D91")))
+                                style_paroles=style, couleurs=tuple(couleurs),
+                                y_credit=(1920 - 320 - 60) if style == "neon" else None)
 
     fichier = d / f"{c['artiste']}_{slug(c['titre_son'] or 'son', 16)}_{int(c['debut'])}.mp4"
     if c["mode"] in ("clip", "video"):
@@ -262,7 +266,7 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
         c["mise_en_page"] = "suivi_visage" if traj else "flou"
         cmd = cadrage.commandes(traj, d / "cadrage.txt") if traj else None
         filtre = (cadrage.filtre(traj, cmd, "[0:v]", "[cadre]")
-                  + f";[cadre]subtitles='{montage.chemin_ass(ass)}'[v]")
+                  + f";[cadre]{montage.sous_titres(ass)}[v]")
         montage.executer(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{c['debut']:.3f}", "-i", str(source),
                           "-t", f"{duree:.3f}", "-filter_complex", filtre, "-map", "[v]", "-map", "0:a",
                           "-af", f"afade=t=in:d=0.08,afade=t=out:st={max(duree - 0.4, 0):.2f}:d=0.4",
@@ -302,7 +306,8 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
                 "pas de caméra fixe : react entier recadré") + ")")
         else:
             montage_beat.monter(choix, chemins, segs, audio_p, ass, fichier, d / "segments",
-                                zoom=cfg.get("zooms", True))
+                                zoom=cfg.get("zooms", True),
+                                etalonnage=(cfg.get("etalonnage") or {}).get(c["mode"], "sombre" if style == "neon" else ""))
     return fichier
 
 

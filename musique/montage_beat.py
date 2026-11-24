@@ -80,11 +80,11 @@ def images_sur_le_beat(choix: list[dict], chemins: list[Path], segs: list[tuple[
 
 
 def monter(choix: list[dict], chemins: list[Path], segs: list[tuple[float, float, float]], audio: Path,
-           ass: Path, sortie: Path, dossier: Path, zoom: bool = True) -> Path:
+           ass: Path, sortie: Path, dossier: Path, zoom: bool = True, etalonnage: str = "") -> Path:
     images = images_sur_le_beat(choix, chemins, segs, dossier, zoom)
     duree = segs[-1][1]
     executer(["ffmpeg", "-y", "-loglevel", "error", "-i", str(images), "-i", str(audio),
-              "-filter_complex", f"[0:v]subtitles='{montage.chemin_ass(ass)}'[v]", "-map", "[v]", "-map", "1:a",
+              "-filter_complex", f"[0:v]{montage.sous_titres(ass, etalonnage)}[v]", "-map", "[v]", "-map", "1:a",
               "-t", f"{duree:.3f}", "-af", "afade=t=out:st=" + f"{max(duree - 0.4, 0):.2f}" + ":d=0.4",
               *montage.options_encodage(duree), str(sortie)])
     return sortie

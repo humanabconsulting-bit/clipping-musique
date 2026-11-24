@@ -114,6 +114,18 @@ def chemin_ass(ass: Path) -> str:
     return str(ass).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
 
 
+POLICES = Path(__file__).resolve().parent.parent / "polices"   # Montserrat Black (licence libre OFL)
+
+
+def sous_titres(ass: Path, etalonnage: str = "") -> str:
+    """Filtre ffmpeg qui incruste le fichier ASS (polices du projet incluses), avec un étalonnage optionnel
+    avant le texte : « sombre » = ambiance nuit (plus sombre, moins saturé, vignette) comme l'exemple."""
+    avant = ""
+    if etalonnage == "sombre":
+        avant = "eq=brightness=-0.05:contrast=1.08:saturation=0.85,vignette=PI/4.5,"
+    return f"{avant}subtitles='{chemin_ass(ass)}':fontsdir='{chemin_ass(POLICES)}'"
+
+
 # ---------------------------------------------------------------- transcription (faster-whisper)
 def transcrire(audio: Path, modele: str = "small", langue: str | None = None) -> tuple[list[dict], str]:
     """Liste de mots {debut, fin, mot, phrase} + langue détectée. Vide si Whisper n'est pas installé.

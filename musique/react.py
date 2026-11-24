@@ -96,7 +96,7 @@ def monter(react_chemin: Path, react_depart: float, cadre: tuple | None, bas: Pa
                 f"crop={LARGEUR}:{H_HAUT},setsar=1,fps={IPS}[haut]")
     filtre = (f"{haut};[1:v]setsar=1,fps={IPS}[bas];[haut][bas]vstack=inputs=2,"
               f"drawbox=x=0:y={H_HAUT - 3}:w={LARGEUR}:h=6:color=black@0.9:t=fill,"
-              f"subtitles='{montage.chemin_ass(ass)}'[v]")
+              f"{montage.sous_titres(ass)}[v]")
     executer(["ffmpeg", "-y", "-loglevel", "error", "-stream_loop", "-1", "-ss", f"{react_depart:.3f}",
               "-i", str(react_chemin), "-i", str(bas), "-i", str(audio),
               "-filter_complex", filtre, "-map", "[v]", "-map", "2:a", "-t", f"{duree:.3f}",
