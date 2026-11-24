@@ -276,7 +276,8 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
     else:
         plans = _visuels_pour(c, params, cfg, fiche, log)
         segs = montage_beat.coupes(analyse, c["debut"], c["fin"])
-        plans = visuels.filtrer_qualite(plans, int(cfg.get("qualite_min_px", 720)), log)
+        qmin = params.get("qualite_min")
+        plans = visuels.filtrer_qualite(plans, int(qmin if qmin not in (None, "") else cfg.get("qualite_min_px", 720)), log)
         choix = visuels.choisir_plans(plans, segs, c["id"])
         chemins = [visuels.chemin_plan(x["plan"]) for x in choix]
         c["visuels_source"] = choix[0]["origine"] if choix else ""
@@ -428,6 +429,7 @@ def main() -> int:
     p.add_argument("--fin", default="", help="forcer un passage, ex. 1:40")
     p.add_argument("--visuels", default="", choices=["", "banque", "artiste", "generale", "reacts", "tout", "clip_artiste", "pexels"])
     p.add_argument("--clip", default="", help="clip du même artiste pour --visuels clip_artiste")
+    p.add_argument("--qualite-min", dest="qualite_min", default="", help="forcer la qualité minimale (px), 0 = tout accepter")
     p.add_argument("--react", default="", help="mode react : fichier précis de banque-reacts (sinon choisi seul)")
     p.add_argument("--tags", default="", help="tags de la banque / mots Pexels, séparés par des virgules")
     p.add_argument("--demo", action="store_true")
