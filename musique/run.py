@@ -248,6 +248,13 @@ def _choix_base(c: dict, source: Path, segs: list, params: dict, cfg: dict, fich
     return choix
 
 
+def _credit_video(cfg: dict, fiche: dict) -> str:
+    """Petit texte en bas de la vidéo (réglage `credit_sur_video`) : "" = rien (choix du 24/11),
+    "artiste" = @artiste, ou le nom de la chaîne (ex. "@machaine") quand elle sera créée."""
+    v = (cfg.get("credit_sur_video") or "").strip()
+    return legende.mention(fiche) if v == "artiste" else v
+
+
 def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
     fiche = artiste(cfg, c["artiste"])
     source = Path(c["source_fichier"])
@@ -283,14 +290,14 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
     c["accroche"] = (c["texte_perso"] if c["texte"] == "perso" else legende.choisir_accroche(c, cfg)) \
         if c["texte"] in avec_accroche else ""
     if c["mode"] == "react":
-        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
+        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], _credit_video(cfg, fiche), mots,
                                 y_paroles=react.Y_PAROLES_REACT, y_credit=react.Y_CREDIT_REACT)
     else:
         # style des paroles par mode (réglage styles_paroles) : karaoké jaune en bas, ou « deux couleurs » au milieu
         c["style_paroles"] = style
         couleurs = (cfg.get("couleurs_neon") or ["#FFFFFF", "#1FE5E0"]) if style == "neon" else \
             (cfg.get("couleurs_paroles") or ["#FFFFFF", "#33B5FF", "#0B3D91"])
-        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
+        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], _credit_video(cfg, fiche), mots,
                                 style_paroles=style, couleurs=tuple(couleurs),
                                 y_credit=(1920 - 320 - 60) if style == "neon" else None)
 

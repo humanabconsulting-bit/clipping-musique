@@ -45,6 +45,10 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
   jamais sur le 1er plan ; paroles de la vidéo au MILIEU, style néon blanc / turquoise, image assombrie.
 - Lancement : workflow « Clips musique », mode `base`, source = le fichier déposé dans `entrees`.
 
+## Crédit sur la vidéo
+- 24/11 : plus de @artiste écrit sur la vidéo (`credit_sur_video: ""`) ; il sera remplacé par le nom de la chaîne
+  quand elle existera (mettre "@nomdelachaine"). La légende TikTok garde la mention @artiste.
+
 ## Codes et réglages
 - Codes courts `M0001`… dans `data/clips.json`. Clips 1080×1920, 30 i/s, ~16 Mo, 15–30 s par défaut.
 - `auto_approuver: false` : rien ne part sans validation (tableau de bord, ou workflow « Valider ou rejeter »).
