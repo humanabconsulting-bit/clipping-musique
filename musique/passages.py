@@ -56,13 +56,19 @@ def choisir(analyse: dict, mots: list[dict], nombre: int, duree_min: float, dure
     bornes = mesures(analyse) + [analyse["duree"]]
     deja = list(deja or [])
     candidats = []
+    # Intro et fin de vidéo exclues : écrans de fin (« abonne-toi », « watch and listen now »), fondus, silences
+    total = analyse["duree"]
+    debut_utile = 3.0 if total > 40 else 0.0
+    fin_utile = total - (min(15.0, total * 0.08) if total > 60 else 0.0)
     for i, a in enumerate(bornes[:-1]):
+        if a < debut_utile:
+            continue
         for j in range(i + 1, len(bornes)):
             b = bornes[j]
             d = b - a
             if d < duree_min:
                 continue
-            if d > duree_max + 0.01:
+            if d > duree_max + 0.01 or b > fin_utile + 0.05:
                 break
             # pas de coupe au milieu d'un mot à la fin : on essaie la mesure suivante (ou on garde)
             if mots and _mot_coupe(mots, b) and j + 1 < len(bornes) and bornes[j + 1] - a <= duree_max:

@@ -1,0 +1,60 @@
+name: Déposer des fichiers (WeTransfer, Drive…)
+
+# Colle un lien WeTransfer / Google Drive / Dropbox : les fichiers vont directement dans le dossier choisi.
+# Les banques sont ensuite indexées automatiquement.
+on:
+  workflow_dispatch:
+    inputs:
+      lien:
+        description: "Lien WeTransfer, Google Drive (partage « Tous les utilisateurs disposant du lien ») ou Dropbox. Vide = fichiers envoyés à Claude"
+        default: ""
+      dossier:
+        description: "Dossier : sons | entrees | banque-generale | banque-reacts | banque-<artiste> (ex. banque-lafouine)"
+        default: "entrees"
+      artiste:
+        description: "Clé de l'artiste (ajoutée au début des noms de fichiers si elle manque), ex. lafouine"
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: musique-donnees
+  cancel-in-progress: false
+
+env:
+  DEPOT_DONNEES: humanabconsulting-bit/clipping-musique-donnees
+  DONNEES: donnees
+  GH_REPO: humanabconsulting-bit/clipping-musique-donnees
+  GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
+  I_LIEN: ${{ inputs.lien }}
+  I_DOSSIER: ${{ inputs.dossier }}
+  I_ARTISTE: ${{ inputs.artiste }}
+
+jobs:
+  deposer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/preparer
+        with:
+          jeton: ${{ secrets.DONNEES_TOKEN }}
+          lourd: ${{ startsWith(inputs.dossier, 'banque-') && 'true' || 'false' }}
+      - name: "📥 Récupérer et déposer"
+        run: |
+          pip install -q gdown
+          python -m musique.deposer --dossier "$I_DOSSIER" --artiste "$I_ARTISTE" --lien "$I_LIEN"
+      - name: "🗂️ Indexer la banque"
+        if: startsWith(inputs.dossier, 'banque-')
+        run: python -m musique.banque indexer --banque "$I_DOSSIER"
+      - name: "📊 Sauvegarde"
+        run: |
+          cd donnees
+          git config user.name "clipping-musique-bot"
+          git config user.email "clipping-musique-bot@users.noreply.github.com"
+          git add -A data/ a-deposer/ 2>/dev/null; git add -u
+          git diff --cached --quiet && exit 0
+          git commit -q -m "Fichiers déposés dans $I_DOSSIER"
+          for i in 1 2 3 4; do git pull -q --rebase && git push -q && exit 0; sleep $((i * 5)); done
+          exit 1

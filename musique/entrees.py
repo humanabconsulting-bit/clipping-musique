@@ -42,7 +42,9 @@ def recuperer(source: str, nom_local: str | None = None) -> Path:
     if source.startswith(("http://", "https://")):
         return montage.telecharger(source, DOSSIER / (nom_local or "source.mp4"))
     f = DOSSIER / source
-    for tag in TAGS:
+    # aussi dans la banque de l'artiste (le nom commence par sa clé : lafouine_1981-colors.mp4 → banque-lafouine)
+    cle = source.split("_")[0].lower() if "_" in source else ""
+    for tag in TAGS + ((f"banque-{cle}",) if cle else ()):
         subprocess.run(["gh", "release", "download", tag, "-p", source, "-D", str(DOSSIER), "--clobber"],
                        capture_output=True, text=True)
         if f.exists():
