@@ -19,7 +19,7 @@
   "transcrire_morceau": true,
   "separer_voix": false,
   "langue": null,
-  "visuels_defaut": "pexels",
+  "visuels_defaut": "banque",
   "zooms": true,
   "taux_visages_min": 0.25,
   "budget_montage_minutes": 50,

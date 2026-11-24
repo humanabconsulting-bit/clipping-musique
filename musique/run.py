@@ -11,6 +11,8 @@ Modes :
     video     : une vidéo fournie (même traitement que clip)
     son       : seulement le morceau → visuels autorisés (banque | clip_artiste | pexels) montés sur le beat
     lifestyle : le morceau + la banque lifestyle (plans choisis selon l'énergie, les couleurs, le mouvement)
+    react     : le morceau ; en haut (1/3) un streamer qui réagit à cet artiste, en bas (2/3) ses vidéos /
+                la banque, paroles au milieu
 
 Étapes (comme le programme stream) : recherche → montage → envoi → sauvegarde ; état dans travail/etat.json.
 """
@@ -26,11 +28,15 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import analyse_audio, cadrage, controles, entrees, legende, montage, montage_beat, paroles, passages, texte, visuels
+from . import (analyse_audio, cadrage, controles, entrees, legende, montage, montage_beat, paroles, passages, react,
+               texte, visuels)
 from .commun import (CLIPS, DATA, EN_DIRECT, ETAT, PASSAGES, PREFIXE_CODE, SORTIE, TRAVAIL, Journal, artiste,
                      ecrire, lire, maintenant, reglages, sur_github)
 
-MODES = ("clip", "video", "son", "lifestyle")
+MODES = ("clip", "video", "son", "lifestyle", "react")
+# Visuels pris dans les banques : `banque` = anciennes vidéos de l'artiste + banque générale
+VISUELS_BANQUES = {"banque": ["artiste", "generale"], "artiste": ["artiste"], "generale": ["generale"],
+                   "reacts": ["reacts"], "tout": ["artiste", "generale", "reacts"]}
 TEXTES = ("tout", "paroles", "accroche", "perso", "aucun")
 
 
@@ -155,6 +161,7 @@ def etape_recherche(params: dict) -> None:
             "details": p["details"], "texte": params.get("texte", "tout"),
             "texte_perso": params.get("texte_perso", ""), "visuels": params.get("visuels"),
             "paroles_fichier": params.get("paroles", ""), "clip": params.get("clip", ""), "tags": params.get("tags", ""),
+            "react_impose": params.get("react", ""),
             "demo": bool(params.get("demo")),
         })
         d = p["details"]
@@ -174,13 +181,18 @@ def _visuels_pour(c: dict, params: dict, cfg: dict, fiche: dict, log) -> list[di
             f = montage.demo_video(TRAVAIL / f"plan_demo_{k}.mp4", 12, src)
             plans.append(dict(visuels.bq.analyser(f), nom=f.name, chemin=str(f), origine="demo"))
         return plans
-    choix_v = "banque" if mode == "lifestyle" else (params.get("visuels") or cfg.get("visuels_defaut", "pexels"))
-    if choix_v == "banque":
+    choix_v = params.get("visuels") or ("banque" if mode == "lifestyle" else cfg.get("visuels_defaut", "banque"))
+    if mode == "lifestyle" and choix_v not in VISUELS_BANQUES:
+        choix_v = "banque"
+    if choix_v in VISUELS_BANQUES:
+        sources = VISUELS_BANQUES[choix_v]
         tags = [t for t in (params.get("tags") or "").split(",") if t.strip()]
-        plans = visuels.plans_banque(tags) or visuels.plans_banque(None)
+        plans = visuels.plans_banque(fiche["cle"], sources, tags) or visuels.plans_banque(fiche["cle"], sources)
         if not plans:
-            raise visuels.VisuelsRefuses("banque vide : dépose des vidéos dans la Release « banque » puis lance "
-                                         "le workflow « Banque : indexer »")
+            raise visuels.VisuelsRefuses(
+                f"aucune vidéo pour {fiche['nom']} dans : {', '.join(sources)}. Dépose des vidéos dans les Releases "
+                f"(banque-generale, banque-{fiche['cle']}, banque-reacts) puis lance « Banque : indexer »")
+        log(f"   visuels : {len(plans)} plan(s) disponibles ({', '.join(sources)})")
         return plans
     if choix_v == "clip_artiste":
         nom = params.get("clip") or ""
@@ -218,9 +230,15 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
             mots, langue, origine = paroles.paroles_passage(audio_p, d, cfg, f_paroles, c["debut"], log=log)
         c.update(paroles_source=origine, langue=langue, paroles=" ".join(w["mot"] for w in mots))
         log(f"   paroles : {len(mots)} mot(s) ({origine}{', ' + langue if langue else ''})")
+    # en mise en page react, le haut est le visage du streamer : pas d'accroche sauf si demandée exprès
+    avec_accroche = ("accroche", "perso") if c["mode"] == "react" else ("tout", "accroche", "perso")
     c["accroche"] = (c["texte_perso"] if c["texte"] == "perso" else legende.choisir_accroche(c, cfg)) \
-        if c["texte"] in ("tout", "accroche", "perso") else ""
-    ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots)
+        if c["texte"] in avec_accroche else ""
+    if c["mode"] == "react":
+        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
+                                y_paroles=react.Y_PAROLES_REACT, y_credit=react.Y_CREDIT_REACT)
+    else:
+        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots)
 
     fichier = d / f"{c['artiste']}_{slug(c['titre_son'] or 'son', 16)}_{int(c['debut'])}.mp4"
     if c["mode"] in ("clip", "video"):
@@ -256,9 +274,30 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
         credits = sorted({x["plan"].get("credit") for x in choix if x["plan"].get("credit")})
         if credits:
             c["credits_visuels"] = credits
+        c["sources_visuels"] = sorted({x["origine"] for x in choix})
         log(f"   montage sur le beat : {len(segs)} plan(s) ({c['visuels_source']})")
-        montage_beat.monter(choix, chemins, segs, audio_p, ass, fichier, d / "segments",
-                            zoom=cfg.get("zooms", True))
+        if c["mode"] == "react":
+            if c.get("demo"):
+                r = {"nom": "react_demo.mp4", "chemin": str(montage.demo_video(TRAVAIL / "react_demo.mp4", 30, "smptehdbars")),
+                     "duree": 30.0, "streamer": "streamer_demo", "origine": "reacts"}
+            else:
+                reacts = visuels.plans_banque(fiche["cle"], ["reacts"])
+                r = react.choisir_react(reacts, duree, c["id"], params.get("react", ""))
+            r_chemin = visuels.chemin_plan(r)
+            r_depart = round(max(0.0, min(r.get("duree", duree) - duree - 0.5, r.get("duree", duree) * 0.2)), 2)
+            cadre = react.cadre_camera(r_chemin, r_depart, duree)
+            bas = montage_beat.images_sur_le_beat(choix, chemins, segs, d / "segments", cfg.get("zooms", True),
+                                                  montage.LARGEUR, react.H_BAS)
+            react.monter(r_chemin, r_depart, cadre, bas, audio_p, ass, duree, fichier)
+            credit = f"react @{r.get('streamer') or '?'}"
+            c["react"] = {"nom": r["nom"], "streamer": r.get("streamer"), "depart": r_depart,
+                          "camera_trouvee": bool(cadre)}
+            c["credits_visuels"] = sorted(set(c.get("credits_visuels", [])) | {credit})
+            log(f"   react : {r['nom']} ({credit}, " + ("caméra du streamer trouvée" if cadre else
+                "pas de caméra fixe : react entier recadré") + ")")
+        else:
+            montage_beat.monter(choix, chemins, segs, audio_p, ass, fichier, d / "segments",
+                                zoom=cfg.get("zooms", True))
     return fichier
 
 
@@ -375,11 +414,14 @@ def main() -> int:
     p.add_argument("--paroles", default="", help="fichier .txt ou .lrc (Release « entrees »)")
     p.add_argument("--debut", default="", help="forcer un passage, ex. 1:12")
     p.add_argument("--fin", default="", help="forcer un passage, ex. 1:40")
-    p.add_argument("--visuels", default="", choices=["", "banque", "clip_artiste", "pexels"])
+    p.add_argument("--visuels", default="", choices=["", "banque", "artiste", "generale", "reacts", "tout", "clip_artiste", "pexels"])
     p.add_argument("--clip", default="", help="clip du même artiste pour --visuels clip_artiste")
+    p.add_argument("--react", default="", help="mode react : fichier précis de banque-reacts (sinon choisi seul)")
     p.add_argument("--tags", default="", help="tags de la banque / mots Pexels, séparés par des virgules")
     p.add_argument("--demo", action="store_true")
-    a = p.parse_args()
+    # options supplémentaires du workflow (champ « options »), ex. --paroles jefe.lrc --debut 1:12 --fin 1:40
+    import shlex
+    a = p.parse_args(sys.argv[1:] + shlex.split(os.environ.get("OPTIONS_SUPP", "")))
     demo = a.demo or os.environ.get("MODE_DEMO", "").lower() in ("1", "true")
     params = {k: v for k, v in vars(a).items() if k != "etape"}
     params["demo"] = demo

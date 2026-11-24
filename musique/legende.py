@@ -59,7 +59,10 @@ def legende(c: dict, fiche: dict, cfg: dict) -> str:
         if len(h) > 1 and h.lower() not in vus:
             vus.add(h.lower())
             propres.append(h)
-    texte = f"{accroche} {mention(fiche)} {' '.join(propres[:5])}".strip()
+    # reacts de streamers : on les crédite toujours (« react @streamer »)
+    reacts = [x for x in c.get("credits_visuels", []) if x.startswith("react @")]
+    credit = (" " + " ".join(reacts[:2])) if reacts else ""
+    texte = f"{accroche} {mention(fiche)}{credit} {' '.join(propres[:5])}".strip()
     if fiche.get("contenu_de_marque"):
         texte = f"Publicité · {texte}"
     return texte

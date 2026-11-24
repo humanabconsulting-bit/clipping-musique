@@ -31,7 +31,8 @@ def refaire(c: dict) -> Path:
     params = {"mode": c["mode"], "source": c["source"], "artiste": c["artiste"], "titre": c.get("titre_son", ""),
               "nb": "1", "duree": "", "texte": c.get("texte", "tout"), "texte_perso": c.get("texte_perso", ""),
               "paroles": c.get("paroles_fichier", ""), "debut": str(c["debut"]), "fin": str(c["fin"]),
-              "visuels": c.get("visuels") or "", "clip": c.get("clip", ""), "tags": c.get("tags", ""), "demo": False}
+              "visuels": c.get("visuels") or "", "clip": c.get("clip", ""), "tags": c.get("tags", ""),
+              "react": (c.get("react") or {}).get("nom", ""), "demo": False}
     run.etape_recherche(params)
     run.etape_montage()
     etat = run.charger_etat()

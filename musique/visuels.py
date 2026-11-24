@@ -1,6 +1,7 @@
 """Visuels AUTORISÉS pour les modes `son` et `lifestyle` (droits d'auteur) :
 
-- `banque`       : ta banque lifestyle (Release `banque` + data/banque.json) ;
+- `banque`       : les banques (Releases `banque-…`, voir banque.py) : générale (tous les artistes),
+                   `banque-<cle>` (anciennes vidéos de l'artiste), `banque-reacts` (reacts sur CET artiste) ;
 - `clip_artiste` : le clip officiel du MÊME artiste que le son (fichier dans `entrees`, son nom
                    doit commencer par la clé de l'artiste, ex. `ninho_jefe_clip.mp4`) ;
 - `pexels`       : vidéos libres de droits Pexels (API gratuite, secret PEXELS_API_KEY).
@@ -15,7 +16,7 @@ from pathlib import Path
 import requests
 
 from . import banque as bq
-from .commun import BANQUE, TRAVAIL, ecrire, lire
+from .commun import TRAVAIL, ecrire, lire
 
 PEXELS = "https://api.pexels.com/videos/search"
 MOTS_PEXELS = ["city night", "luxury car", "street", "neon lights", "highway night", "skyline", "rain city",
@@ -36,16 +37,34 @@ def verifier_clip_artiste(nom_fichier: str, cle_artiste: str) -> None:
             f"l'artiste du son (« {cle}_… »). Les images du clip d'un autre artiste sont interdites.")
 
 
-def plans_banque(tags: list[str] | None = None) -> list[dict]:
-    """Plans de la banque (filtrés par tags si demandé), avec leur fiche d'analyse."""
-    index = lire(BANQUE, {})
+def plans_banque(cle_artiste: str, sources: list[str], tags: list[str] | None = None) -> list[dict]:
+    """Plans autorisés pour CET artiste.
+
+    sources : parmi "artiste" (banque-<cle>), "generale" (banque-generale), "reacts" (banque-reacts,
+    uniquement les reacts sur le son de cet artiste).
+    """
+    index = bq.lire_index()
+    cle = (cle_artiste or "").lower()
     plans = []
-    for nom, f in index.items():
-        if f.get("duree", 0) < 1.5:
+    for banque, fichiers in index.items():
+        t = bq.type_banque(banque)
+        if t == "artiste" and ("artiste" not in sources or banque != bq.banque_artiste(cle)):
             continue
-        if tags and not set(t.lower() for t in tags) & set(f.get("tags", [])):
+        if t == "generale" and "generale" not in sources:
             continue
-        plans.append(dict(f, nom=nom, origine="banque"))
+        if t == "reacts" and "reacts" not in sources:
+            continue
+        for nom, f in fichiers.items():
+            if f.get("duree", 0) < 1.5:
+                continue
+            if t == "reacts" and f.get("artiste") != cle:  # jamais le react d'un autre artiste
+                continue
+            if tags and not set(x.lower() for x in tags) & set(f.get("tags", [])):
+                continue
+            p = dict(f, nom=nom, banque=banque, origine=t)
+            if t == "reacts" and f.get("streamer"):
+                p["credit"] = f"react @{f['streamer']}"
+            plans.append(p)
     return plans
 
 
@@ -102,7 +121,7 @@ def plans_clip(chemin: Path) -> list[dict]:
 def chemin_plan(p: dict) -> Path:
     if p.get("chemin"):
         return Path(p["chemin"])
-    return bq.chemin_local(p["nom"])
+    return bq.chemin_local(p["banque"], p["nom"])
 
 
 def choisir_plans(plans: list[dict], coupes: list[tuple[float, float, float]], graine: str) -> list[dict]:

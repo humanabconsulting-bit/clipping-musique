@@ -32,6 +32,12 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
 - `contenu_de_marque` (false par défaut) : si true → « Publicité » dans la légende + rappel de cocher l'option
   « contenu de marque » à la main dans TikTok (l'API Buffer ne le permet pas à notre connaissance).
 
+## Dossiers et mode react
+- Releases : `sons` (morceaux), `entrees` (paroles, vidéos à découper), `banque-generale` (lifestyle, tous les artistes),
+  `banque-reacts` (`<cle>__<streamer>_….mp4`, seulement pour cet artiste), `banque-<cle>` (anciennes vidéos de l'artiste).
+- Mode `react` : streamer en haut (1/3, recadré sur sa caméra), vidéos de l'artiste / lifestyle en bas (2/3) sur le beat,
+  paroles au milieu, son du morceau. Jamais le react d'un autre artiste ; streamer crédité dans la légende.
+
 ## Codes et réglages
 - Codes courts `M0001`… dans `data/clips.json`. Clips 1080×1920, 30 i/s, ~16 Mo, 15–30 s par défaut.
 - `auto_approuver: false` : rien ne part sans validation (tableau de bord, ou workflow « Valider ou rejeter »).

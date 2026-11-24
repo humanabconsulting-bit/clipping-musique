@@ -13,13 +13,26 @@ Fabrique des clips verticaux TikTok (1080×1920) à partir de morceaux de rappeu
 4. Tu regardes et tu valides (**Actions → « Valider ou rejeter »**, ou le tableau de bord).
 5. **« Publier »** (toutes les 4 h) programme les vidéos validées sur TikTok via Buffer.
 
-## Les 4 modes
+## Les dossiers (Releases du dépôt privé `clipping-musique-donnees`)
+| Dossier | Ce que tu mets dedans | Pour qui |
+|---|---|---|
+| `sons` | les morceaux (mp3, wav, m4a), ex. `rk_mon-son.mp3` | — |
+| `entrees` | paroles `.txt`/`.lrc`, vidéos à découper (modes clip/video) | — |
+| `banque-generale` | vidéos lifestyle sans rapport avec un artiste (`voiture_nuit.mp4`) | tous les artistes |
+| `banque-reacts` | streamers qui réagissent à un son d'un artiste : **`rk__naskid_react.mp4`** | seulement cet artiste |
+| `banque-<artiste>` | clips et anciennes vidéos de l'artiste (`banque-rk`, `banque-lafouine`…) | seulement cet artiste |
+
+Après avoir ajouté des vidéos dans une banque : **Actions → « Banque : indexer »**.
+Nouvel artiste : **Actions → « Installation »** avec sa clé dans `artistes` (crée `banque-<cle>`).
+
+## Les modes
 | Mode | Tu donnes | Le programme fait |
 |---|---|---|
 | `clip` | le clip officiel (fichier) | trouve les meilleurs passages, recadre en 9:16 en suivant le visage du rappeur |
 | `video` | une vidéo à toi | pareil que `clip` |
 | `son` | seulement le son (mp3/wav/m4a) | choisit le passage, puis monte des visuels autorisés coupés sur le beat |
 | `lifestyle` | le son + ta banque de vidéos | choisit les plans de la banque qui collent (énergie, couleurs, mouvement) |
+| `react` | le son | **haut (1/3)** : un streamer qui réagit à cet artiste ; **bas (2/3)** : clip / vidéos de l'artiste / lifestyle coupés sur le beat ; **paroles au milieu** |
 
 Champs du workflow « Clips musique » :
 - `source` : nom du fichier dans `entrees` (ex. `ninho_jefe_clip.mp4`) ;
@@ -35,6 +48,8 @@ Champs du workflow « Clips musique » :
 ## Visuels autorisés (droits d'auteur)
 Uniquement : ta banque lifestyle (Release `banque` + workflow « Banque : indexer »), le clip officiel du
 **même** artiste (nom de fichier qui commence par sa clé, ex. `ninho_…`), ou Pexels (libre de droits).
+Un react n'est utilisé que pour l'artiste écrit au début de son nom (jamais pour un autre : ça ferait croire
+que le streamer a réagi à un son qu'il n'a pas écouté) ; le streamer est crédité dans la légende (`react @naskid`).
 Un artiste sans `"accord": true` dans les réglages n'est **jamais publié**.
 
 ## Mise en place (une seule fois)

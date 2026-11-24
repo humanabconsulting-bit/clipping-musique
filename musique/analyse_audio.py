@@ -96,6 +96,14 @@ def analyser(audio: Path) -> dict:
         drop[i] = max(0.0, apres - avant) * (1.0 if avant < 0.55 else 0.6)
     drop = _norm(drop) if drop.max() > 0.15 else drop
 
+    # toutes les séries ont exactement une valeur par temps (morceaux très courts : complétées)
+    nb = len(temps_beats)
+
+    def ajuster(x):
+        x = np.asarray(x, dtype=float)[:nb]
+        return np.pad(x, (0, nb - len(x)), mode="edge") if 0 < len(x) < nb else (x if len(x) else np.zeros(nb))
+
+    e_n, b_n, rep, drop, v_b = ajuster(e_n), ajuster(b_n), ajuster(rep), ajuster(drop), ajuster(v_b)
     return {
         "duree": round(duree, 2),
         "tempo": round(tempo, 1),

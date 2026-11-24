@@ -3,6 +3,10 @@ name: Installation (une seule fois)
 # Crée les Releases du dépôt de données privé (entrees, banque) et vérifie les accès.
 on:
   workflow_dispatch:
+    inputs:
+      artistes:
+        description: "Clés des artistes (un dossier banque-<cle> chacun), séparées par des virgules"
+        default: "rk,lafouine,timar"
 
 permissions:
   contents: read
@@ -20,13 +24,25 @@ jobs:
         run: |
           if [ -z "$GH_TOKEN" ]; then echo "❌ Secret DONNEES_TOKEN absent"; exit 1; fi
           gh repo view "$GH_REPO" --json name -q .name && echo "✔ dépôt de données accessible"
-      - name: "📦 Releases"
+      - name: "📦 Dossiers (Releases)"
+        env:
+          ARTISTES: ${{ inputs.artistes }}
         run: |
-          gh release view entrees >/dev/null 2>&1 || gh release create entrees --title "Entrées (sons, vidéos, paroles)" \
-            --notes "Dépose ici les fichiers à traiter : clips, vidéos, sons (mp3/wav/m4a), paroles (.txt/.lrc). Nom conseillé : cle-artiste_titre.ext (ex. ninho_jefe.mp3)."
-          gh release view banque >/dev/null 2>&1 || gh release create banque --title "Banque lifestyle" \
-            --notes "Dépose ici tes vidéos lifestyle. Le nom donne les tags (ex. voiture_nuit_ville.mp4). Puis lance « Banque : indexer »."
-          gh release list
+          creer() { gh release view "$1" >/dev/null 2>&1 && echo "✔ $1 existe déjà" || { gh release create "$1" --title "$2" --notes "$3" >/dev/null && echo "✔ $1 créé"; }; }
+          creer sons "Sons" "Les morceaux (mp3, wav, m4a) qui ne sont pas déjà sur TikTok. Nom : cle-artiste_titre.mp3 (ex. rk_mon-son.mp3)."
+          creer entrees "Entrées (paroles, vidéos à traiter)" "Paroles .txt/.lrc, clips ou vidéos à découper (modes clip/video). Nom : cle-artiste_titre.ext."
+          creer banque-generale "Banque générale (lifestyle)" "Vidéos lifestyle sans rapport avec un artiste, utilisables pour TOUS. Le nom donne les tags : voiture_nuit_ville.mp4."
+          creer banque-reacts "Banque reacts (streamers)" "Streamers qui réagissent à un son d'un artiste. Nom OBLIGATOIRE : cle-artiste__streamer_mots.mp4 (ex. rk__naskid_react.mp4). Utilisé seulement pour cet artiste."
+          for a in $(echo "$ARTISTES" | tr ',' ' '); do
+            cle=$(echo "$a" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
+            [ -n "$cle" ] && creer "banque-$cle" "Banque $cle" "Clips et anciennes vidéos de $cle (utilisées seulement pour $cle). Le nom donne les tags."
+          done
+          # l'ancien dossier « banque » (vide) est remplacé par banque-generale
+          if gh release view banque >/dev/null 2>&1 && [ -z "$(gh release view banque --json assets -q '.assets[].name')" ]; then
+            gh release delete banque -y --cleanup-tag && echo "– ancien dossier « banque » (vide) supprimé"
+          fi
+          gh release list --limit 50
+
       - name: "🌐 Dépôt public tampon (publication, plus tard)"
         env:
           PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}

@@ -6,16 +6,16 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Mode"
+        description: "Mode : clip | video | son | lifestyle | react (streamer en haut, artiste en bas)"
         type: choice
-        options: [clip, video, son, lifestyle]
-        default: clip
+        options: [react, clip, video, son, lifestyle]
+        default: react
       source:
-        description: "Fichier déposé dans la Release « entrees » (ex. ninho_jefe.mp4) ou lien"
+        description: "Fichier du son ou de la vidéo (Release « sons » ou « entrees »), ex. rk_mon-son.mp3"
         required: false
         default: ""
       artiste:
-        description: "Clé de l'artiste (config/reglages.json)"
+        description: "Clé de l'artiste (ex. rk, lafouine, timar)"
         required: false
         default: ""
       titre:
@@ -33,22 +33,13 @@ on:
         type: choice
         options: [tout, paroles, accroche, perso, aucun]
         default: tout
-      texte_perso:
-        description: "Texte perso (si texte = perso)"
-        default: ""
-      paroles_fichier:
-        description: "Paroles .txt ou .lrc (Release « entrees »), optionnel"
-        default: ""
-      debut_fin:
-        description: "Forcer un passage, ex. 1:12-1:40 (vide = automatique)"
-        default: ""
       visuels:
-        description: "Visuels (modes son)"
+        description: "Visuels (banque = vidéos de l'artiste + générale)"
         type: choice
-        options: [pexels, banque, clip_artiste]
-        default: pexels
+        options: [banque, artiste, generale, reacts, tout, pexels, clip_artiste]
+        default: banque
       options:
-        description: "Avancé : --clip <fichier> --tags nuit,voiture"
+        description: "Avancé : --paroles x.lrc --debut 1:12 --fin 1:40 --react x.mp4 --clip x.mp4 --tags nuit --texte-perso \"…\""
         default: ""
       demo:
         description: "Mode démo (aucun fichier)"
@@ -75,11 +66,8 @@ env:
   I_NB: ${{ inputs.nb_clips }}
   I_DUREE: ${{ inputs.duree }}
   I_TEXTE: ${{ inputs.texte }}
-  I_TEXTE_PERSO: ${{ inputs.texte_perso }}
-  I_PAROLES: ${{ inputs.paroles_fichier }}
-  I_DEBUT_FIN: ${{ inputs.debut_fin }}
   I_VISUELS: ${{ inputs.visuels }}
-  I_OPTIONS: ${{ inputs.options }}
+  OPTIONS_SUPP: ${{ inputs.options }}
   MODE_DEMO: ${{ inputs.demo }}
 
 jobs:
@@ -95,13 +83,9 @@ jobs:
 
       - name: "🔎 1. Analyse du morceau + choix des passages"
         run: |
-          DEBUT="${I_DEBUT_FIN%%-*}"; FIN="${I_DEBUT_FIN#*-}"
-          [ -z "$I_DEBUT_FIN" ] && DEBUT="" && FIN=""
-          VIS=""; case "$I_MODE" in son) VIS="$I_VISUELS";; esac
-          read -r -a OPTS <<< "$I_OPTIONS"
+          VIS=""; case "$I_MODE" in son|lifestyle|react) VIS="$I_VISUELS";; esac
           python -m musique.run recherche --mode "$I_MODE" --source "$I_SOURCE" --artiste "$I_ARTISTE" \
-            --titre "$I_TITRE" --nb "$I_NB" --duree "$I_DUREE" --texte "$I_TEXTE" --texte-perso "$I_TEXTE_PERSO" \
-            --paroles "$I_PAROLES" --debut "$DEBUT" --fin "$FIN" ${VIS:+--visuels "$VIS"} "${OPTS[@]}" \
+            --titre "$I_TITRE" --nb "$I_NB" --duree "$I_DUREE" --texte "$I_TEXTE" ${VIS:+--visuels "$VIS"} \
             $( [ "$MODE_DEMO" = "true" ] && echo --demo )
 
       - name: "🎬 2. Montage vertical + texte"

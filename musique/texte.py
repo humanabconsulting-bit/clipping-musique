@@ -55,7 +55,7 @@ def decouper(texte: str, largeur: int = 24, lignes_max: int = 3) -> str:
     return "\\N".join(lignes[:lignes_max])
 
 
-def _karaoke(mots: list[dict], duree: float, par_groupe: int = 3) -> list[str]:
+def _karaoke(mots: list[dict], duree: float, par_groupe: int = 3, y: int = Y_PAROLES, ancre: int = 2) -> list[str]:
     """Paroles mot par mot : groupes de 2 à 4 mots, mot chanté en jaune."""
     ev = []
     ms = [w for w in mots if w["fin"] > 0 and w["debut"] < duree and nettoyer(w["mot"])]
@@ -78,14 +78,18 @@ def _karaoke(mots: list[dict], duree: float, par_groupe: int = 3) -> list[str]:
                 t = majuscules(nettoyer(x["mot"]))
                 morceaux.append("{\\c" + JAUNE + "}" + t + "{\\c" + BLANC + "}" if k == j else t)
             ev.append(f"Dialogue: 2,{_t(max(w['debut'], 0))},{_t(min(max(fin_w, w['debut'] + 0.1), duree))},Paroles,,0,0,0,,"
-                      f"{{\\an2\\pos({CENTRE_X},{Y_PAROLES})}}" + " ".join(morceaux))
+                      f"{{\\an{ancre}\\pos({CENTRE_X},{y})}}" + " ".join(morceaux))
     return ev
 
 
 def fichier_ass(chemin: Path, duree: float, accroche: str = "", credit: str = "",
-                mots: list[dict] | None = None, couleur_cadre: str = "&H00CF4F5A") -> Path:
+                mots: list[dict] | None = None, couleur_cadre: str = "&H00CF4F5A",
+                y_paroles: int | None = None, y_credit: int | None = None) -> Path:
+    """y_paroles : centre des paroles (mise en page react : au milieu, sur la jointure haut/bas) ;
+    y_credit : position du crédit (sinon sous l'accroche)."""
     """Accroche (cadre coloré, en haut) + crédit @artiste (petit, sous l'accroche) + paroles karaoké."""
     accroche = nettoyer(accroche)
+    y_credit_force = y_credit
     lignes = [
         "[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920", "WrapStyle: 2",
         "ScaledBorderAndShadow: yes", "",
@@ -104,11 +108,13 @@ def fichier_ass(chemin: Path, duree: float, accroche: str = "", credit: str = ""
         lignes.append(f"Dialogue: 1,{_t(0)},{_t(duree)},Accroche,,0,0,0,,{{\\an8\\pos({CENTRE_X},{Y_ACCROCHE})}}"
                       f"{decouper(accroche)}")
         y_credit = Y_ACCROCHE + 56 * min(3, decouper(accroche).count("\\N") + 1) + 70
+    if y_credit_force is not None:
+        y_credit = y_credit_force
     if credit:
         lignes.append(f"Dialogue: 0,{_t(0)},{_t(duree)},Credit,,0,0,0,,{{\\an8\\pos({CENTRE_X},{y_credit})}}"
                       f"{nettoyer(credit)}")
     if mots:
-        lignes += _karaoke(mots, duree)
+        lignes += _karaoke(mots, duree, y=y_paroles, ancre=5) if y_paroles else _karaoke(mots, duree)
     chemin.parent.mkdir(parents=True, exist_ok=True)
     chemin.write_text("\n".join(lignes) + "\n", encoding="utf-8")
     return chemin
