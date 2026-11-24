@@ -43,3 +43,15 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
 - `auto_approuver: false` : rien ne part sans validation (tableau de bord, ou workflow « Valider ou rejeter »).
 - Publication : TikTok seul pour commencer, compte Buffer « musique » (secret `BUFFER_API_KEY_MUSIQUE`),
   dépôt public tampon `media-temp` partagé avec le stream, fichiers préfixés `musique-`.
+
+## Dépôt de fichiers
+- Le propriétaire donne la matière par artiste (clips, vidéos) : lien WeTransfer / Drive dans le chat, ou fichiers.
+- Claude écrit le lien dans `a-deposer/<dossier>/lien.txt` du dépôt PRIVÉ (ou les fichiers dans ce dossier),
+  pousse, puis lance le workflow « Déposer des fichiers » (dossier + artiste). Jamais de lien dans un champ de
+  workflow : les journaux du dépôt public sont visibles par tous.
+
+## Retours du propriétaire (24/11) — à faire
+- Typographie des paroles : plus GRANDE et plus GRASSE ; il va envoyer un exemple de style à copier.
+- Erreurs dans les paroles : privilégier un fichier de paroles (.txt/.lrc) ou le modèle Whisper `medium`.
+- Résolution : demander des sources en 1080p (la vidéo COLORS de test était en 640×360).
+- Façon de travailler : il annonce l'artiste, donne la matière (vidéos, clips), puis Claude lance le montage.

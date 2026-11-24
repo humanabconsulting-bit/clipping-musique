@@ -7,6 +7,8 @@ Sources acceptées :
 - un lien direct vers un fichier ;
 - sans lien : les fichiers poussés par Claude dans le dossier `a-deposer/<dossier>/` du dépôt de données
   (ils sont ensuite retirés de Git pour ne pas l'alourdir).
+Le lien est donné à Claude dans le chat, qui l'écrit dans `a-deposer/<dossier>/lien.txt` (dépôt privé) :
+il ne passe JAMAIS par un champ du workflow, car les journaux du dépôt public sont visibles par tous.
 
 Les noms sont nettoyés (minuscules, sans accents ni espaces) et, pour `sons` / `entrees` / `banque-<artiste>`,
 préfixés par la clé de l'artiste si elle manque (ex. « 1981 COLORS.mp4 » → « lafouine_1981-colors.mp4 »).
@@ -71,7 +73,7 @@ def wetransfer(url: str, dossier: Path) -> Path:
     finale = page.url
     parties = [x for x in urlparse(finale).path.split("/") if x]
     if "downloads" not in parties:
-        raise RuntimeError(f"lien WeTransfer non reconnu ({finale})")
+        raise RuntimeError("lien WeTransfer non reconnu")  # le lien n'est jamais affiché (journaux publics)
     ids = parties[parties.index("downloads") + 1:]
     if len(ids) < 2:
         raise RuntimeError("lien WeTransfer incomplet")
@@ -95,9 +97,9 @@ def wetransfer(url: str, dossier: Path) -> Path:
 def google_drive(url: str, dossier: Path) -> list[Path]:
     import gdown
     if "/folders/" in url:
-        fichiers = gdown.download_folder(url=url, output=str(dossier), quiet=False, use_cookies=False) or []
+        fichiers = gdown.download_folder(url=url, output=str(dossier), quiet=True, use_cookies=False) or []
         return [Path(f) for f in fichiers]
-    f = gdown.download(url=url, output=str(dossier) + "/", quiet=False, fuzzy=True)
+    f = gdown.download(url=url, output=str(dossier) + "/", quiet=True, fuzzy=True)
     if not f:
         raise RuntimeError("Google Drive : téléchargement impossible (le partage doit être « Tous les "
                            "utilisateurs disposant du lien »)")
@@ -167,24 +169,29 @@ def main() -> int:
     travail = TRAVAIL / "depot"
     if travail.exists():
         shutil.rmtree(travail)
-    if a.lien.strip():
-        fichiers = recuperer(a.lien.strip(), travail)
-        git = None
+    git = DONNEES / "a-deposer" / dossier
+    # Le lien est écrit par Claude dans le dépôt PRIVÉ (a-deposer/<dossier>/lien.txt) : il n'apparaît jamais
+    # dans les journaux publics des workflows (sinon n'importe qui pourrait télécharger les fichiers).
+    lien = a.lien.strip()
+    if not lien and (git / "lien.txt").exists():
+        lien = (git / "lien.txt").read_text(encoding="utf-8").strip()
+    if lien:
+        print("::add-mask::" + lien)
+        fichiers = recuperer(lien, travail)
     else:  # fichiers poussés par Claude dans le dépôt de données
-        git = DONNEES / "a-deposer" / dossier
         if not git.exists():
             print(f"Rien à déposer (ni lien, ni fichiers dans a-deposer/{dossier})")
             return 1
         travail.mkdir(parents=True)
         fichiers = []
         for f in sorted(git.iterdir()):
-            if f.is_file():
+            if f.is_file() and f.name != "lien.txt":
                 shutil.copy2(f, travail / f.name)
                 fichiers.append(travail / f.name)
     print(f"{len(fichiers)} fichier(s) récupéré(s)")
     deposes = deposer(fichiers, dossier, a.artiste.strip())
-    if git and deposes:
-        shutil.rmtree(git)  # le workflow retire ensuite ces fichiers de Git
+    if git.exists() and deposes:
+        shutil.rmtree(git)  # le workflow retire ensuite ces fichiers (et le lien) de Git
     print(f"Terminé : {len(deposes)} fichier(s) dans « {dossier} »")
     return 0 if deposes else 1
 

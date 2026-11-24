@@ -1,13 +1,11 @@
 name: Déposer des fichiers (WeTransfer, Drive…)
 
-# Colle un lien WeTransfer / Google Drive / Dropbox : les fichiers vont directement dans le dossier choisi.
-# Les banques sont ensuite indexées automatiquement.
+# Lancé par Claude : le lien WeTransfer / Google Drive / Dropbox (ou les fichiers) est d'abord écrit dans le
+# dépôt PRIVÉ (a-deposer/<dossier>/), jamais dans un champ ici (les journaux de ce dépôt public sont visibles).
+# Les fichiers vont dans le dossier choisi, puis les banques sont indexées automatiquement.
 on:
   workflow_dispatch:
     inputs:
-      lien:
-        description: "Lien WeTransfer, Google Drive (partage « Tous les utilisateurs disposant du lien ») ou Dropbox. Vide = fichiers envoyés à Claude"
-        default: ""
       dossier:
         description: "Dossier : sons | entrees | banque-generale | banque-reacts | banque-<artiste> (ex. banque-lafouine)"
         default: "entrees"
@@ -27,7 +25,6 @@ env:
   DONNEES: donnees
   GH_REPO: humanabconsulting-bit/clipping-musique-donnees
   GH_TOKEN: ${{ secrets.DONNEES_TOKEN }}
-  I_LIEN: ${{ inputs.lien }}
   I_DOSSIER: ${{ inputs.dossier }}
   I_ARTISTE: ${{ inputs.artiste }}
 
@@ -44,7 +41,7 @@ jobs:
       - name: "📥 Récupérer et déposer"
         run: |
           pip install -q gdown
-          python -m musique.deposer --dossier "$I_DOSSIER" --artiste "$I_ARTISTE" --lien "$I_LIEN"
+          python -m musique.deposer --dossier "$I_DOSSIER" --artiste "$I_ARTISTE"
       - name: "🗂️ Indexer la banque"
         if: startsWith(inputs.dossier, 'banque-')
         run: python -m musique.banque indexer --banque "$I_DOSSIER"
