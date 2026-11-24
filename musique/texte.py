@@ -136,6 +136,14 @@ def _neon(mots: list[dict], duree: float, couleurs: tuple, y: int) -> list[str]:
         att = []
     if att:
         blocs.append({"debut": att[0]["debut"], "fin": att[0]["fin"], "petit": "", "mot": att[0]["mot"]})
+    # jamais deux mots en même temps (sinon ils se superposent) : ordre strict, chaque mot s'arrête quand le suivant arrive
+    blocs.sort(key=lambda b: b["debut"])
+    propres = []
+    for b in blocs:
+        if propres and b["debut"] < propres[-1]["debut"] + 0.08:
+            continue
+        propres.append(b)
+    blocs = propres
     ev = []
     for i, b in enumerate(blocs):
         fin = blocs[i + 1]["debut"] if i + 1 < len(blocs) and blocs[i + 1]["debut"] - b["fin"] < 0.8 else b["fin"] + 0.35

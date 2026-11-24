@@ -52,7 +52,9 @@ def lire_paroles(chemin: Path) -> list[dict]:
         if not brut or re.match(r"^\[(ar|ti|al|by|offset|length|re|ve):", brut, re.I):
             continue
         temps = re.findall(r"\[(\d+):(\d+(?:[.,]\d+)?)\]", brut)
-        texte = re.sub(r"\[[^\]]*\]", "", brut).strip()
+        texte = re.sub(r"\[[^\]]*\]", "", brut)
+        texte = re.sub(r"\([^)]*\)", " ", texte)  # back-up / ad-libs entre parenthèses : pas affichés
+        texte = re.sub(r"\s+", " ", texte).strip()
         if not texte:
             continue
         if temps:
