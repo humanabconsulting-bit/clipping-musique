@@ -31,7 +31,7 @@ Nouvel artiste : **Actions → « Installation »** avec sa clé dans `artistes`
 | `clip` | le clip officiel (fichier) | trouve les meilleurs passages, recadre en 9:16 en suivant le visage du rappeur |
 | `video` | une vidéo à toi | pareil que `clip` |
 | `son` | seulement le son (mp3/wav/m4a) | choisit le passage, puis monte des visuels autorisés coupés sur le beat |
-| `lifestyle` | le son + ta banque de vidéos | choisit les plans de la banque qui collent (énergie, couleurs, mouvement) |
+| `lifestyle` | le son | vidéos lifestyle (`banque-generale`) **mélangées** avec les clips de l'artiste (`banque-<artiste>`), coupées sur le beat ; **paroles au milieu qui défilent, un mot blanc / un mot bleu brillant** |
 | `react` | le son | **haut (1/3)** : un streamer qui réagit à cet artiste ; **bas (2/3)** : clip / vidéos de l'artiste / lifestyle coupés sur le beat ; **paroles au milieu** |
 
 Champs du workflow « Clips musique » :

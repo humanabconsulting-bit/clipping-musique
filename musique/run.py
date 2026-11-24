@@ -238,7 +238,12 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
         ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
                                 y_paroles=react.Y_PAROLES_REACT, y_credit=react.Y_CREDIT_REACT)
     else:
-        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots)
+        # style des paroles par mode (réglage styles_paroles) : karaoké jaune en bas, ou « deux couleurs » au milieu
+        style = (cfg.get("styles_paroles") or {}).get(c["mode"], "deux_couleurs" if c["mode"] == "lifestyle" else "karaoke")
+        c["style_paroles"] = style
+        ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
+                                style_paroles=style, couleurs=tuple(cfg.get("couleurs_paroles") or
+                                                                    ("#FFFFFF", "#33B5FF", "#0B3D91")))
 
     fichier = d / f"{c['artiste']}_{slug(c['titre_son'] or 'son', 16)}_{int(c['debut'])}.mp4"
     if c["mode"] in ("clip", "video"):

@@ -134,6 +134,7 @@ def choisir_plans(plans: list[dict], coupes: list[tuple[float, float, float]], g
     if not plans:
         raise VisuelsRefuses("aucun plan disponible")
     rng = random.Random(graine)
+    sources = {p.get("origine") for p in plans}
     choix, utilises, ref = [], {}, None
     for (a, b, energie) in coupes:
         d = b - a
@@ -147,6 +148,9 @@ def choisir_plans(plans: list[dict], coupes: list[tuple[float, float, float]], g
                 s -= 5
             if p.get("orientation") == "vertical":
                 s += 0.2  # pas de perte en recadrant
+            # mélange : on alterne les sources (ex. lifestyle ↔ clip de l'artiste) quand il y en a plusieurs
+            if choix and len(sources) > 1:
+                s += 0.8 if p.get("origine") != choix[-1]["origine"] else 0.0
             return s + rng.random() * 0.3
         p = max(possibles, key=note)
         ref = ref or p

@@ -8,7 +8,11 @@
       "accord_note": "Exemple : accord donné par DM Instagram le JJ/MM/AAAA (capture gardée)",
       "contenu_de_marque": false,
       "hashtags": "",
-      "pexels_mots": ["city night", "street", "neon lights"]
+      "pexels_mots": [
+        "city night",
+        "street",
+        "neon lights"
+      ]
     }
   ],
   "nb_clips": 4,
@@ -42,7 +46,23 @@
       "buffer_id": "",
       "actif": false,
       "par_jour": 3,
-      "heures": [12, 18, 21]
+      "heures": [
+        12,
+        18,
+        21
+      ]
     }
+  ],
+  "styles_paroles": {
+    "clip": "karaoke",
+    "video": "karaoke",
+    "son": "karaoke",
+    "lifestyle": "deux_couleurs",
+    "react": "karaoke"
+  },
+  "couleurs_paroles": [
+    "#FFFFFF",
+    "#33B5FF",
+    "#0B3D91"
   ]
 }

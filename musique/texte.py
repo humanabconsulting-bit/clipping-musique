@@ -20,6 +20,7 @@ MARGE_HAUT = 180
 CENTRE_X = (1080 - MARGE_DROITE) // 2 + 20     # centre décalé vers la gauche, loin des boutons
 Y_PAROLES = 1920 - MARGE_BAS - 180            # bas des paroles (ancrage en bas) : 1420
 Y_ACCROCHE = MARGE_HAUT + 40                  # haut de l'accroche : 220
+Y_MILIEU = 960                                # paroles « au milieu » (style deux couleurs)
 
 JAUNE = "&H0000FFFF&"
 BLANC = "&HFFFFFF&"
@@ -55,6 +56,55 @@ def decouper(texte: str, largeur: int = 24, lignes_max: int = 3) -> str:
     return "\\N".join(lignes[:lignes_max])
 
 
+def couleur_ass(hexa: str) -> str:
+    """« #33B5FF » → « &H00FFB533& » (ASS écrit les couleurs en bleu-vert-rouge)."""
+    h = hexa.lstrip("#")
+    return f"&H00{h[4:6]}{h[2:4]}{h[0:2]}&".upper()
+
+
+def _groupes(mots: list[dict], duree: float, par_groupe: int) -> list[list[dict]]:
+    ms = [w for w in mots if w["fin"] > 0 and w["debut"] < duree and nettoyer(w["mot"])]
+    groupes, cour = [], []
+    for w in ms:
+        if cour and (len(cour) >= par_groupe or (w.get("phrase") and len(cour) >= 2)
+                     or w["debut"] - cour[-1]["fin"] > 1.2):
+            groupes.append(cour)
+            cour = []
+        cour.append(w)
+    if cour:
+        groupes.append(cour)
+    return groupes
+
+
+def _deux_couleurs(mots: list[dict], duree: float, couleurs: tuple, y: int, par_groupe: int = 3) -> list[str]:
+    """Paroles qui défilent au MILIEU de l'écran : les mots apparaissent au moment où ils sont chantés,
+    un mot sur deux en couleur 1 (blanc) / couleur 2 (bleu brillant, avec un halo lumineux)."""
+    c1, c2 = couleur_ass(couleurs[0]), couleur_ass(couleurs[1])
+    halo = couleur_ass(couleurs[2]) if len(couleurs) > 2 else "&H00913D0B&"  # contour bleu foncé flouté = halo lisible
+    ev = []
+    groupes = _groupes(mots, duree, par_groupe)
+    rang = 0
+    for g_i, groupe in enumerate(groupes):
+        suivant_g = groupes[g_i + 1][0]["debut"] if g_i + 1 < len(groupes) else duree
+        rangs = list(range(rang, rang + len(groupe)))
+        rang += len(groupe)
+        for j, w in enumerate(groupe):
+            fin_w = groupe[j + 1]["debut"] if j + 1 < len(groupe) else min(suivant_g, w["fin"] + 0.8)
+            morceaux = []
+            for k, x in enumerate(groupe):
+                t = majuscules(nettoyer(x["mot"]))
+                bleu = rangs[k] % 2 == 1
+                style = ("{\\c" + c2 + "\\3c" + halo + "\\blur3}") if bleu else ("{\\c" + c1 + "\\3c&H000000&\\blur0}")
+                if k > j:  # pas encore chanté : invisible mais garde sa place (le texte ne saute pas)
+                    style = style[:-1] + "\\alpha&HFF&}"
+                elif k == j:  # mot chanté : petit « pop »
+                    style = style[:-1] + "\\fscx108\\fscy108}"
+                morceaux.append(style + t)
+            ev.append(f"Dialogue: 2,{_t(max(w['debut'], 0))},{_t(min(max(fin_w, w['debut'] + 0.1), duree))},Paroles,,0,0,0,,"
+                      f"{{\\an5\\pos({CENTRE_X},{y})}}" + " ".join(morceaux))
+    return ev
+
+
 def _karaoke(mots: list[dict], duree: float, par_groupe: int = 3, y: int = Y_PAROLES, ancre: int = 2) -> list[str]:
     """Paroles mot par mot : groupes de 2 à 4 mots, mot chanté en jaune."""
     ev = []
@@ -84,7 +134,8 @@ def _karaoke(mots: list[dict], duree: float, par_groupe: int = 3, y: int = Y_PAR
 
 def fichier_ass(chemin: Path, duree: float, accroche: str = "", credit: str = "",
                 mots: list[dict] | None = None, couleur_cadre: str = "&H00CF4F5A",
-                y_paroles: int | None = None, y_credit: int | None = None) -> Path:
+                y_paroles: int | None = None, y_credit: int | None = None,
+                style_paroles: str = "karaoke", couleurs: tuple = ("#FFFFFF", "#33B5FF", "#0B3D91")) -> Path:
     """y_paroles : centre des paroles (mise en page react : au milieu, sur la jointure haut/bas) ;
     y_credit : position du crédit (sinon sous l'accroche)."""
     """Accroche (cadre coloré, en haut) + crédit @artiste (petit, sous l'accroche) + paroles karaoké."""
@@ -113,7 +164,9 @@ def fichier_ass(chemin: Path, duree: float, accroche: str = "", credit: str = ""
     if credit:
         lignes.append(f"Dialogue: 0,{_t(0)},{_t(duree)},Credit,,0,0,0,,{{\\an8\\pos({CENTRE_X},{y_credit})}}"
                       f"{nettoyer(credit)}")
-    if mots:
+    if mots and style_paroles == "deux_couleurs":
+        lignes += _deux_couleurs(mots, duree, couleurs, y_paroles or Y_MILIEU)
+    elif mots:
         lignes += _karaoke(mots, duree, y=y_paroles, ancre=5) if y_paroles else _karaoke(mots, duree)
     chemin.parent.mkdir(parents=True, exist_ok=True)
     chemin.write_text("\n".join(lignes) + "\n", encoding="utf-8")
