@@ -58,7 +58,8 @@
     "video": "karaoke",
     "son": "neon",
     "lifestyle": "neon",
-    "react": "karaoke"
+    "react": "karaoke",
+    "base": "neon"
   },
   "couleurs_paroles": [
     "#FFFFFF",
@@ -71,7 +72,8 @@
   ],
   "etalonnage": {
     "lifestyle": "sombre",
-    "son": "sombre"
+    "son": "sombre",
+    "base": "sombre"
   },
   "qualite_min_px": 720,
   "faisceau_whisper": 5,
@@ -89,5 +91,6 @@
     "bécane",
     "binks"
   ],
-  "corrections": {}
+  "corrections": {},
+  "part_extraits": 0.3
 }

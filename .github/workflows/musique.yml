@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Mode : clip | video | son | lifestyle | react (streamer en haut, artiste en bas)"
+        description: "Mode : base (ta vidéo + extraits) | react | clip | video | son | lifestyle"
         type: choice
-        options: [react, clip, video, son, lifestyle]
-        default: react
+        options: [base, react, clip, video, son, lifestyle]
+        default: base
       source:
         description: "Fichier du son ou de la vidéo (Release « sons » ou « entrees »), ex. rk_mon-son.mp3"
         required: false
@@ -83,7 +83,7 @@ jobs:
 
       - name: "🔎 1. Analyse du morceau + choix des passages"
         run: |
-          VIS=""; case "$I_MODE" in son|lifestyle|react) VIS="$I_VISUELS";; esac
+          VIS=""; case "$I_MODE" in son|lifestyle|react|base) VIS="$I_VISUELS";; esac
           python -m musique.run recherche --mode "$I_MODE" --source "$I_SOURCE" --artiste "$I_ARTISTE" \
             --titre "$I_TITRE" --nb "$I_NB" --duree "$I_DUREE" --texte "$I_TEXTE" ${VIS:+--visuels "$VIS"} \
             $( [ "$MODE_DEMO" = "true" ] && echo --demo )

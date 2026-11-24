@@ -35,6 +35,8 @@ jobs:
         run: python -m musique.run --demo --mode son --nb 1 && mv sortie/*.mp4 apercu/
       - name: "🎬 Démo — lifestyle"
         run: python -m musique.run --demo --mode lifestyle --nb 1 && mv sortie/*.mp4 apercu/
+      - name: "🎬 Démo — base"
+        run: python -m musique.run --demo --mode base --nb 1 && mv sortie/*.mp4 apercu/
       - name: "🎬 Démo — react"
         run: python -m musique.run --demo --mode react --nb 1 && mv sortie/*.mp4 apercu/
       - uses: actions/upload-artifact@v4

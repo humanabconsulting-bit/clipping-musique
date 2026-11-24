@@ -38,6 +38,13 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
 - Mode `react` : streamer en haut (1/3, recadré sur sa caméra), vidéos de l'artiste / lifestyle en bas (2/3) sur le beat,
   paroles au milieu, son du morceau. Jamais le react d'un autre artiste ; streamer crédité dans la légende.
 
+## Mode `base` (demandé le 24/11 — à retenir)
+- Le propriétaire donne UNE vidéo (souvent par WeTransfer) : elle sert de BASE, avec SON PROPRE SON.
+- Montage : la base reste le fil conducteur, images synchronisées avec le son ; ~30 % des mesures (`part_extraits`)
+  sont remplacées par de petits extraits (banque de l'artiste + banque générale), jamais deux extraits de suite,
+  jamais sur le 1er plan ; paroles de la vidéo au MILIEU, style néon blanc / turquoise, image assombrie.
+- Lancement : workflow « Clips musique », mode `base`, source = le fichier déposé dans `entrees`.
+
 ## Codes et réglages
 - Codes courts `M0001`… dans `data/clips.json`. Clips 1080×1920, 30 i/s, ~16 Mo, 15–30 s par défaut.
 - `auto_approuver: false` : rien ne part sans validation (tableau de bord, ou workflow « Valider ou rejeter »).

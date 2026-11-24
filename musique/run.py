@@ -11,6 +11,8 @@ Modes :
     video     : une vidéo fournie (même traitement que clip)
     son       : seulement le morceau → visuels autorisés (banque | clip_artiste | pexels) montés sur le beat
     lifestyle : le morceau + la banque lifestyle (plans choisis selon l'énergie, les couleurs, le mouvement)
+    base      : une vidéo fournie sert de BASE (son de la vidéo, images synchronisées) + petits extraits de
+                l'artiste / lifestyle glissés sur le beat ; paroles au milieu (style néon)
     react     : le morceau ; en haut (1/3) un streamer qui réagit à cet artiste, en bas (2/3) ses vidéos /
                 la banque, paroles au milieu
 
@@ -33,7 +35,7 @@ from . import (analyse_audio, cadrage, controles, entrees, legende, montage, mon
 from .commun import (CLIPS, DATA, EN_DIRECT, ETAT, PASSAGES, PREFIXE_CODE, SORTIE, TRAVAIL, Journal, artiste,
                      ecrire, lire, maintenant, reglages, sur_github)
 
-MODES = ("clip", "video", "son", "lifestyle", "react")
+MODES = ("clip", "video", "son", "lifestyle", "react", "base")
 # Visuels pris dans les banques : `banque` = anciennes vidéos de l'artiste + banque générale
 VISUELS_BANQUES = {"banque": ["artiste", "generale"], "artiste": ["artiste"], "generale": ["generale"],
                    "reacts": ["reacts"], "tout": ["artiste", "generale", "reacts"]}
@@ -101,7 +103,7 @@ def etape_recherche(params: dict) -> None:
 
     # 1. Fichier source
     if params.get("demo"):
-        if mode in ("clip", "video"):
+        if mode in ("clip", "video", "base"):
             src = montage.demo_son(TRAVAIL / "demo_son.wav")
             video = montage.demo_video(TRAVAIL / "demo_clip_muet.mp4", 96)
             source = TRAVAIL / "demo_clip.mp4"
@@ -115,7 +117,7 @@ def etape_recherche(params: dict) -> None:
     info = montage.infos_video(source)
     if not info["son"]:
         raise RuntimeError(f"{source.name} n'a pas de son")
-    if mode in ("clip", "video") and not info["video"]:
+    if mode in ("clip", "video", "base") and not info["video"]:
         raise RuntimeError(f"{source.name} n'a pas d'image : utilise le mode « son » ou « lifestyle »")
     log(f"Source : {source.name} ({mmss(info['duree'])}"
         + (f", {info['largeur']}×{info['hauteur']}" if info["video"] else ", audio seul") + ")")
@@ -204,6 +206,48 @@ def _visuels_pour(c: dict, params: dict, cfg: dict, fiche: dict, log) -> list[di
     raise visuels.VisuelsRefuses(f"visuels « {choix_v} » inconnus (banque | clip_artiste | pexels)")
 
 
+def _choix_base(c: dict, source: Path, segs: list, params: dict, cfg: dict, fiche: dict, qmin: int, log) -> list[dict]:
+    """Mode `base` : la vidéo fournie est la BASE (son et images synchronisés), avec de petits extraits
+    (vidéos de l'artiste / lifestyle) glissés sur certaines mesures. Réglage `part_extraits` (0,3 = 30 %)."""
+    from . import banque as bq
+    fiche_base = dict(bq.analyser(source), nom=source.name, chemin=str(source), origine="base")
+    info = montage.infos_video(source)
+    if min(info["largeur"], info["hauteur"]) < qmin:
+        log(f"   ⚠ la vidéo de base est en {info['largeur']}×{info['hauteur']} (sous {qmin}p) : rendu moins net", "alerte")
+    part = float(params.get("part_extraits") or cfg.get("part_extraits", 0.3))
+    # extraits : jamais le 1er plan (on accroche avec la base), surtout sur les mesures les plus énergiques
+    n_ext = int(round(len(segs) * part))
+    candidats = sorted(range(1, len(segs)), key=lambda k: -segs[k][2])
+    inserts, pris = [], set()
+    for k in candidats:
+        if len(inserts) >= n_ext:
+            break
+        if k - 1 in pris or k + 1 in pris:  # jamais deux extraits de suite : la base reste le fil conducteur
+            continue
+        inserts.append(k)
+        pris.add(k)
+    choix_ext = {}
+    if inserts:
+        try:
+            plans = _visuels_pour(dict(c, mode="son"), dict(params, visuels=params.get("visuels") or "banque"),
+                                  cfg, fiche, log)
+            plans = [p for p in plans if p["nom"] != source.name]
+            plans = visuels.filtrer_qualite(plans, qmin, log)
+            for k, x in zip(inserts, visuels.choisir_plans(plans, [segs[k] for k in inserts], c["id"])):
+                choix_ext[k] = x
+        except visuels.VisuelsRefuses as e:
+            log(f"   pas d'extraits ajoutés ({e}) : la vidéo de base seule", "alerte")
+    choix = []
+    for k, (a, b, _) in enumerate(segs):
+        if k in choix_ext:
+            choix.append(choix_ext[k])
+        else:  # la base, exactement au même moment que le son
+            choix.append({"nom": source.name, "plan": fiche_base, "depart": round(c["debut"] + a, 3),
+                          "duree": round(b - a, 3), "origine": "base"})
+    log(f"   montage base : {len(segs) - len(choix_ext)} plan(s) de la vidéo de base + {len(choix_ext)} extrait(s)")
+    return choix
+
+
 def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
     fiche = artiste(cfg, c["artiste"])
     source = Path(c["source_fichier"])
@@ -232,7 +276,7 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
         c.update(paroles_source=origine, langue=langue, paroles=" ".join(w["mot"] for w in mots))
         log(f"   paroles : {len(mots)} mot(s) ({origine}{', ' + langue if langue else ''})")
     # en mise en page react, le haut est le visage du streamer : pas d'accroche sauf si demandée exprès
-    style = (cfg.get("styles_paroles") or {}).get(c["mode"], "neon" if c["mode"] == "lifestyle" else "karaoke")
+    style = (cfg.get("styles_paroles") or {}).get(c["mode"], "neon" if c["mode"] in ("lifestyle", "base") else "karaoke")
     # react (visage du streamer en haut) et style néon (comme l'exemple) : pas d'accroche sauf demandée exprès
     sans_accroche_auto = c["mode"] == "react" or style == "neon"
     avec_accroche = ("accroche", "perso") if sans_accroche_auto else ("tout", "accroche", "perso")
@@ -274,11 +318,15 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
                           *montage.options_encodage(duree), str(fichier)])
         c["visuels_source"] = "clip_artiste" if c["mode"] == "clip" else "video_fournie"
     else:
-        plans = _visuels_pour(c, params, cfg, fiche, log)
         segs = montage_beat.coupes(analyse, c["debut"], c["fin"])
         qmin = params.get("qualite_min")
-        plans = visuels.filtrer_qualite(plans, int(qmin if qmin not in (None, "") else cfg.get("qualite_min_px", 720)), log)
-        choix = visuels.choisir_plans(plans, segs, c["id"])
+        qmin = int(qmin if qmin not in (None, "") else cfg.get("qualite_min_px", 720))
+        if c["mode"] == "base":
+            choix = _choix_base(c, source, segs, params, cfg, fiche, qmin, log)
+        else:
+            plans = _visuels_pour(c, params, cfg, fiche, log)
+            plans = visuels.filtrer_qualite(plans, qmin, log)
+            choix = visuels.choisir_plans(plans, segs, c["id"])
         chemins = [visuels.chemin_plan(x["plan"]) for x in choix]
         c["visuels_source"] = choix[0]["origine"] if choix else ""
         c["plans"] = [{"nom": x["nom"], "depart": x["depart"], "duree": x["duree"], "origine": x["origine"]}
@@ -429,6 +477,7 @@ def main() -> int:
     p.add_argument("--fin", default="", help="forcer un passage, ex. 1:40")
     p.add_argument("--visuels", default="", choices=["", "banque", "artiste", "generale", "reacts", "tout", "clip_artiste", "pexels"])
     p.add_argument("--clip", default="", help="clip du même artiste pour --visuels clip_artiste")
+    p.add_argument("--part-extraits", dest="part_extraits", default="", help="mode base : part d'extraits (0.3 = 30 %%)")
     p.add_argument("--qualite-min", dest="qualite_min", default="", help="forcer la qualité minimale (px), 0 = tout accepter")
     p.add_argument("--react", default="", help="mode react : fichier précis de banque-reacts (sinon choisi seul)")
     p.add_argument("--tags", default="", help="tags de la banque / mots Pexels, séparés par des virgules")
