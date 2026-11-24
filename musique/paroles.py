@@ -205,7 +205,12 @@ def paroles_passage(audio_passage: Path, dossier: Path, cfg: dict, fichier_parol
         if f:
             sources.append(("paroles_en_ligne", f))
     for nom_source, f in sources:
-        alignes = aligner(lire_paroles(f), mots, duree, debut_dans_morceau)
+        lignes = lire_paroles(f)
+        if nom_source == "paroles_en_ligne":
+            # les horaires en ligne sont ceux du son ENTIER : la vidéo peut n'en être qu'un extrait (ou un live)
+            # → on ignore les horaires et on cherche le passage chanté dans tout le texte
+            lignes = [{"debut": None, "texte": x["texte"]} for x in lignes]
+        alignes = aligner(lignes, mots, duree, debut_dans_morceau)
         accord = taux_accord(alignes, mots) if alignes else 0.0
         if alignes and (nom_source == "fichier_paroles" or accord >= 0.35):
             log(f"   double vérification : {int(accord * 100)} % des mots entendus correspondent aux paroles")

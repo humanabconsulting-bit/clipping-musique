@@ -318,7 +318,8 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
                           *montage.options_encodage(duree), str(fichier)])
         c["visuels_source"] = "clip_artiste" if c["mode"] == "clip" else "video_fournie"
     else:
-        segs = montage_beat.coupes(analyse, c["debut"], c["fin"])
+        # mode base : une coupe à chaque mesure (rythme de l'exemple) ; sinon 2 mesures max
+        segs = montage_beat.coupes(analyse, c["debut"], c["fin"], pas_max=1 if c["mode"] == "base" else 2)
         qmin = params.get("qualite_min")
         qmin = int(qmin if qmin not in (None, "") else cfg.get("qualite_min_px", 720))
         if c["mode"] == "base":
