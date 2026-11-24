@@ -4,6 +4,7 @@ Sources acceptées :
 - un lien WeTransfer (we.tl/… ou wetransfer.com/downloads/…) — le .zip est décompressé ;
 - un lien Google Drive public (« Tous les utilisateurs disposant du lien ») : fichier ou dossier ;
 - un lien Dropbox ;
+- une page « musique » TikTok (tiktok.com/music/…) : le son est téléchargé en mp3 ;
 - un lien direct vers un fichier ;
 - sans lien : les fichiers poussés par Claude dans le dossier `a-deposer/<dossier>/` du dépôt de données
   (ils sont ensuite retirés de Git pour ne pas l'alourdir).
@@ -94,6 +95,30 @@ def wetransfer(url: str, dossier: Path) -> Path:
     return _telecharger(lien, dossier, s)
 
 
+def tiktok_son(url: str, dossier: Path) -> Path:
+    """Page « musique » TikTok (tiktok.com/music/…) → fichier audio du son (lien playUrl de la page).
+    yt-dlp ne sait plus lire ces pages (extracteur tiktok:sound cassé)."""
+    import json as _json
+    s = requests.Session()
+    s.headers.update(NAVIGATEUR | {"Accept-Language": "fr-FR,fr;q=0.9"})
+    page = s.get(url, timeout=60, allow_redirects=True).text
+    m = re.search(r'"playUrl":"(https?:[^"]+)"', page)
+    if not m:
+        raise RuntimeError("son TikTok introuvable sur la page (TikTok a peut-être bloqué le serveur). "
+                           "Envoie le son en fichier (mp3) à Claude.")
+    lien = _json.loads(f'"{m.group(1)}"')  # décode les \u002F
+    ident = re.search(r"(\d{12,})", url)
+    titre = re.search(r'"title":"([^"]{1,60})"', page)
+    nom = f"tiktok-son-{ident.group(1) if ident else 'inconnu'}"
+    if titre:
+        nom = f"{_json.loads(chr(34) + titre.group(1) + chr(34))}-{nom}"
+    dest = dossier / f"{nom}.mp3"
+    _telecharger(lien, dest, s)
+    if dest.stat().st_size < 20_000:
+        raise RuntimeError("le fichier du son TikTok est vide ou bloqué")
+    return dest
+
+
 def google_drive(url: str, dossier: Path) -> list[Path]:
     import gdown
     if "/folders/" in url:
@@ -109,7 +134,9 @@ def google_drive(url: str, dossier: Path) -> list[Path]:
 def recuperer(lien: str, dossier: Path) -> list[Path]:
     dossier.mkdir(parents=True, exist_ok=True)
     hote = urlparse(lien).netloc.lower()
-    if "we.tl" in hote or "wetransfer" in hote:
+    if "tiktok.com" in hote and "/music/" in lien:
+        fichiers = [tiktok_son(lien, dossier)]
+    elif "we.tl" in hote or "wetransfer" in hote:
         fichiers = [wetransfer(lien, dossier)]
     elif "drive.google" in hote or "docs.google" in hote:
         fichiers = google_drive(lien, dossier)
