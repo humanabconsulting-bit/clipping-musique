@@ -123,7 +123,10 @@ def _neon(mots: list[dict], duree: float, couleurs: tuple, y: int) -> list[str]:
     # on regroupe les petits mots avec le suivant
     blocs, att = [], []
     for w in ms:
-        t = majuscules(nettoyer(w["mot"]))
+        # style néon : pas de ponctuation collée au mot (« MISSILES, » → « MISSILES »)
+        t = majuscules(nettoyer(w["mot"])).strip(",.;:!?…\"«»()-")
+        if not t:
+            continue
         if len(t) <= 2 and not att:
             att = [dict(w, mot=t)]
             continue
