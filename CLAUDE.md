@@ -52,7 +52,7 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
 
 ## Retours du propriétaire (24/11) — à faire
 - ✅ Typographie : style « neon » d'après son exemple (vibe lyrics) : UN mot à la fois, Montserrat Black énorme,
-  blanc / rose néon (#FF3DCB) en alternance avec halo, images assombries (étalonnage « sombre »), pas d'accroche.
+  blanc / bleu turquoise (turquoise #1FE5E0, choisi le 24/11) en alternance avec halo, images assombries (étalonnage « sombre »), pas d'accroche.
   Réglages : styles_paroles, couleurs_neon, etalonnage. Pas encore fait : la texture « usée » des lettres.
 - Erreurs dans les paroles : privilégier un fichier de paroles (.txt/.lrc) ou le modèle Whisper `medium`.
 - Résolution : demander des sources en 1080p (la vidéo COLORS de test était en 640×360).

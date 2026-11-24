@@ -243,7 +243,7 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
     else:
         # style des paroles par mode (réglage styles_paroles) : karaoké jaune en bas, ou « deux couleurs » au milieu
         c["style_paroles"] = style
-        couleurs = (cfg.get("couleurs_neon") or ["#FFFFFF", "#FF3DCB"]) if style == "neon" else \
+        couleurs = (cfg.get("couleurs_neon") or ["#FFFFFF", "#1FE5E0"]) if style == "neon" else \
             (cfg.get("couleurs_paroles") or ["#FFFFFF", "#33B5FF", "#0B3D91"])
         ass = texte.fichier_ass(d / "texte.ass", duree, c["accroche"], legende.mention(fiche), mots,
                                 style_paroles=style, couleurs=tuple(couleurs),
