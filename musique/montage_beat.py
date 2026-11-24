@@ -15,7 +15,7 @@ from .analyse_audio import mesures
 from .montage import HAUTEUR, IPS, LARGEUR, executer
 
 
-def coupes(analyse: dict, debut: float, fin: float) -> list[tuple[float, float, float]]:
+def coupes(analyse: dict, debut: float, fin: float, pas_max: int = 2) -> list[tuple[float, float, float]]:
     """Segments (debut, fin, energie) RELATIFS au passage, calés sur les mesures."""
     bornes = [t for t in mesures(analyse) if debut - 0.05 <= t <= fin + 0.05]
     if not bornes or bornes[0] > debut + 0.05:
@@ -34,7 +34,8 @@ def coupes(analyse: dict, debut: float, fin: float) -> list[tuple[float, float, 
     i = 0
     while i < len(bornes) - 1:
         e = energie(bornes[i], bornes[min(i + 1, len(bornes) - 1)])
-        pas = 1 if e >= 0.66 else 2 if e >= 0.33 else 4
+        # plans de 1 à 2 mesures (≈ 2 à 5 s, comme l'exemple) : jamais un plan trop long qui ennuie
+        pas = min(pas_max, 1 if e >= 0.66 else 2 if e >= 0.33 else 4)
         j = min(i + pas, len(bornes) - 1)
         if bornes[j] - bornes[i] < 1.2 and j < len(bornes) - 1:  # tempo très rapide : au moins 1,2 s par plan
             j += 1
