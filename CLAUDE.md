@@ -54,6 +54,11 @@ API Pexels gratuite, plan gratuit Buffer, GitHub Actions gratuit.
 - ✅ Typographie : style « neon » d'après son exemple (vibe lyrics) : UN mot à la fois, Montserrat Black énorme,
   blanc / bleu turquoise (turquoise #1FE5E0, choisi le 24/11) en alternance avec halo, images assombries (étalonnage « sombre »), pas d'accroche.
   Réglages : styles_paroles, couleurs_neon, etalonnage. Pas encore fait : la texture « usée » des lettres.
-- Erreurs dans les paroles : privilégier un fichier de paroles (.txt/.lrc) ou le modèle Whisper `medium`.
-- Résolution : demander des sources en 1080p (la vidéo COLORS de test était en 640×360).
+- Paroles (24/11) : 1) fichier fourni ; 2) son déjà sorti → paroles cherchées sur LRCLIB / lyrics.ovh (gratuits) ;
+  les deux sont VÉRIFIÉES contre ce qui est entendu (≥ 35 % de mots communs) ; 3) sinon Whisper large-v3-turbo sur la
+  voix séparée (Demucs), consigne avec le nom de l'artiste + `vocabulaire`, mots incertains cachés, `corrections`
+  (général et par artiste) appliquées. Claude peut relire la transcription et proposer des corrections.
+- Qualité (24/11) : « de bonnes vidéos ou rien » → `qualite_min_px` (720) écarte les sources trop petites ;
+  encodage CRF 17 preset slow (plus de plafond 16 Mo) ; pas de zoom (tremblements) ; texte néon sans contour sombre.
+  Les vidéos WhatsApp et les clips 640×360 de La Fouine sont SOUS ce seuil.
 - Façon de travailler : il annonce l'artiste, donne la matière (vidéos, clips), puis Claude lance le montage.

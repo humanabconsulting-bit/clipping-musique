@@ -48,8 +48,13 @@ def rendre_segment(source: Path, depart: float, nb_images: int, sortie: Path, zo
     """Un plan recadré plein écran 1080×1920, sans son, exactement `nb_images` images.
     `centre` : position habituelle du visage (0–1) → le recadrage 9:16 se centre dessus (reacts, anciens clips)."""
     x = f"min(max(iw*{centre:.3f}-{largeur // 2},0),iw-{largeur})" if centre is not None else f"(iw-{largeur})/2"
-    fill = (f"scale={largeur}:{hauteur}:force_original_aspect_ratio=increase:flags=lanczos,"
-            f"crop={largeur}:{hauteur}:'{x}':'(ih-{hauteur})/2',setsar=1,fps={IPS}")
+    # Sources de petite taille (WhatsApp, 640×360…) : léger débruitage AVANT agrandissement, puis netteté
+    from .montage import infos_video
+    petite = min(infos_video(source)["largeur"], infos_video(source)["hauteur"]) < 900
+    avant = "hqdn3d=1.5:1.5:4:4," if petite else ""
+    apres = ",unsharp=5:5:0.7:5:5:0.0" if petite else ""
+    fill = (f"{avant}scale={largeur}:{hauteur}:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={largeur}:{hauteur}:'{x}':'(ih-{hauteur})/2'{apres},setsar=1,fps={IPS}")
     if zoom:
         z = f"1+0.06*on/{max(nb_images, 1)}" if sens > 0 else f"1.06-0.06*on/{max(nb_images, 1)}"
         fill += (f",zoompan=z='{z}':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={largeur}x{hauteur}:fps={IPS}")

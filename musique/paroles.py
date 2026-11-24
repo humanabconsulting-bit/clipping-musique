@@ -116,24 +116,106 @@ def aligner(lignes: list[dict], reconnus: list[dict], duree: float, decalage: fl
     return sortie
 
 
+# ---------------------------------------------------------------- paroles trouvées sur internet (gratuit)
+def chercher_en_ligne(artiste: str, titre: str, dossier: Path, log=print) -> Path | None:
+    """Son déjà sorti : cherche les paroles sur LRCLIB (base libre et gratuite, souvent avec les horaires
+    ligne par ligne), puis lyrics.ovh. Retourne un fichier .lrc / .txt, ou None."""
+    import requests
+    if not (artiste and titre):
+        return None
+    dossier.mkdir(parents=True, exist_ok=True)
+    try:
+        r = requests.get("https://lrclib.net/api/search", params={"artist_name": artiste, "track_name": titre},
+                         headers={"User-Agent": "clipping-musique (logiciel libre)"}, timeout=20)
+        res = r.json() if r.ok else []
+        res = sorted(res, key=lambda x: (not x.get("syncedLyrics"), not x.get("plainLyrics")))
+        if res and (res[0].get("syncedLyrics") or res[0].get("plainLyrics")):
+            synchro = bool(res[0].get("syncedLyrics"))
+            f = dossier / ("paroles_lrclib" + (".lrc" if synchro else ".txt"))
+            f.write_text(res[0].get("syncedLyrics") or res[0]["plainLyrics"], encoding="utf-8")
+            log(f"   paroles trouvées sur LRCLIB ({'avec horaires' if synchro else 'texte seul'}) : "
+                f"« {res[0].get('trackName')} » — {res[0].get('artistName')}")
+            return f
+    except Exception as e:
+        log(f"   LRCLIB indisponible ({e})", "alerte")
+    try:
+        r = requests.get(f"https://api.lyrics.ovh/v1/{artiste}/{titre}", timeout=20)
+        if r.ok and r.json().get("lyrics"):
+            f = dossier / "paroles_lyricsovh.txt"
+            f.write_text(r.json()["lyrics"], encoding="utf-8")
+            log("   paroles trouvées sur lyrics.ovh (texte seul)")
+            return f
+    except Exception:
+        pass
+    log("   paroles introuvables en ligne (son pas encore sorti ?) : reconnaissance automatique")
+    return None
+
+
+def taux_accord(alignes: list[dict], reconnus: list[dict]) -> float:
+    """Double vérification : part des mots reconnus par Whisper qu'on retrouve dans les paroles calées."""
+    if not reconnus:
+        return 0.0
+    a = [_norm(w["mot"]) for w in alignes]
+    b = [_norm(w["mot"]) for w in reconnus]
+    sm = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    return sum(x.size for x in sm.get_matching_blocks()) / max(len(b), 1)
+
+
+def corriger(mots: list[dict], corrections: dict) -> list[dict]:
+    """Corrections notées une fois pour toutes (réglage `corrections`, général et par artiste) :
+    {"refraiement": "rafraîchissement", "la fouine": "La Fouine"}."""
+    if not corrections:
+        return mots
+    table = {_norm(k): v for k, v in corrections.items()}
+    return [dict(w, mot=table.get(_norm(w["mot"]), w["mot"])) for w in mots]
+
+
 def paroles_passage(audio_passage: Path, dossier: Path, cfg: dict, fichier_paroles: Path | None,
-                    debut_dans_morceau: float, langue: str | None = None, log=print) -> tuple[list[dict], str, str]:
-    """Mots horodatés (relatifs au passage), langue, source utilisée."""
+                    debut_dans_morceau: float, langue: str | None = None, log=print,
+                    fiche: dict | None = None, titre: str = "") -> tuple[list[dict], str, str]:
+    """Mots horodatés (relatifs au passage), langue, source utilisée.
+
+    Ordre : 1) paroles fournies ; 2) paroles trouvées en ligne (son déjà sorti) ; 3) reconnaissance automatique
+    améliorée (voix séparée, modèle plus précis, consigne avec le nom de l'artiste et son vocabulaire).
+    Les paroles 1) et 2) sont VÉRIFIÉES contre ce qui est entendu (double vérification) avant d'être utilisées.
+    """
+    fiche = fiche or {}
     duree = montage.duree_video(audio_passage)
     source_audio = audio_passage
     origine = "whisper"
-    if cfg.get("separer_voix"):
+    if cfg.get("separer_voix", True):
         voix = separer_voix(audio_passage, dossier / "demucs")
         if voix:
-            source_audio, origine = voix, "whisper+demucs"
-            log("   voix séparée avec Demucs")
+            source_audio, origine = voix, "whisper+voix_separee"
+            log("   voix séparée de la musique (Demucs)")
         else:
-            log("   Demucs indisponible : transcription sur le morceau complet", "alerte")
-    mots, langue_det = montage.transcrire(source_audio, cfg.get("modele_whisper_paroles", "medium"),
-                                          langue or cfg.get("langue"))
+            log("   séparation de la voix indisponible : reconnaissance sur le morceau complet", "alerte")
+    vocab = " ".join(cfg.get("vocabulaire", []) + fiche.get("vocabulaire", []))
+    consigne = f"{fiche.get('nom', '')}. Rap français. {vocab}".strip()
+    mots, langue_det = montage.transcrire(source_audio, cfg.get("modele_whisper_paroles", "large-v3-turbo"),
+                                          langue or fiche.get("langue") or cfg.get("langue"), consigne,
+                                          int(cfg.get("faisceau_whisper", 5)))
+    corrections = {**cfg.get("corrections", {}), **fiche.get("corrections", {})}
+    # 1) fichier fourni, 2) paroles en ligne
+    sources = []
     if fichier_paroles and fichier_paroles.exists():
-        alignes = aligner(lire_paroles(fichier_paroles), mots, duree, debut_dans_morceau)
-        if alignes:
-            return alignes, langue_det, "fichier_paroles"
-        log("   paroles fournies impossibles à caler sur ce passage : transcription Whisper gardée", "alerte")
-    return mots, langue_det, origine
+        sources.append(("fichier_paroles", fichier_paroles))
+    elif cfg.get("paroles_en_ligne", True):
+        f = chercher_en_ligne(fiche.get("nom", ""), titre, dossier, log)
+        if f:
+            sources.append(("paroles_en_ligne", f))
+    for nom_source, f in sources:
+        alignes = aligner(lire_paroles(f), mots, duree, debut_dans_morceau)
+        accord = taux_accord(alignes, mots) if alignes else 0.0
+        if alignes and (nom_source == "fichier_paroles" or accord >= 0.35):
+            log(f"   double vérification : {int(accord * 100)} % des mots entendus correspondent aux paroles")
+            return corriger(alignes, corrections), langue_det, nom_source
+        log(f"   paroles {nom_source} écartées : elles ne correspondent pas à ce qui est chanté "
+            f"({int(accord * 100)} % seulement)", "alerte")
+    # 3) reconnaissance automatique : on cache les mots trop incertains plutôt que d'afficher une faute
+    seuil = float(cfg.get("seuil_mots_douteux", 0.3))
+    douteux = [w for w in mots if w.get("proba", 1) < seuil]
+    if douteux and cfg.get("masquer_mots_douteux", True):
+        log(f"   {len(douteux)} mot(s) trop incertain(s) caché(s) : " + ", ".join(w["mot"] for w in douteux[:8]))
+        mots = [w for w in mots if w.get("proba", 1) >= seuil]
+    return corriger(mots, corrections), langue_det, origine

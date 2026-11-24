@@ -104,10 +104,11 @@ def debit_cible(duree: float) -> int:
 
 
 def options_encodage(duree: float) -> list[str]:
-    kbps = debit_cible(duree)
-    return ["-c:v", "libx264", "-preset", "veryfast", "-b:v", f"{kbps}k", "-maxrate", f"{int(kbps * 1.3)}k",
-            "-bufsize", f"{kbps * 2}k", "-pix_fmt", "yuv420p", "-r", str(IPS),
-            "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-movflags", "+faststart"]
+    """Encodage HAUTE QUALITÉ (CRF 17, preset « slow ») : TikTok recompresse toutes les vidéos, il faut lui donner
+    le fichier le plus propre possible (texte net, pas de blocs dans les zones sombres). ~25–45 Mo pour 30 s."""
+    return ["-c:v", "libx264", "-preset", "slow", "-crf", "17", "-maxrate", "14M", "-bufsize", "28M",
+            "-profile:v", "high", "-tune", "film", "-pix_fmt", "yuv420p", "-r", str(IPS),
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart"]
 
 
 def chemin_ass(ass: Path) -> str:
@@ -127,7 +128,8 @@ def sous_titres(ass: Path, etalonnage: str = "") -> str:
 
 
 # ---------------------------------------------------------------- transcription (faster-whisper)
-def transcrire(audio: Path, modele: str = "small", langue: str | None = None) -> tuple[list[dict], str]:
+def transcrire(audio: Path, modele: str = "small", langue: str | None = None, consigne: str = "",
+               faisceau: int = 1) -> tuple[list[dict], str]:
     """Liste de mots {debut, fin, mot, phrase} + langue détectée. Vide si Whisper n'est pas installé.
     Pour la musique : pas de filtre VAD (il coupe les voix sur un beat fort)."""
     try:
@@ -141,8 +143,10 @@ def transcrire(audio: Path, modele: str = "small", langue: str | None = None) ->
     if son.size == 0:
         return [], ""
     m = WhisperModel(modele, device="cpu", compute_type="int8", cpu_threads=4)
+    # consigne : nom de l'artiste + mots d'argot attendus → Whisper les écrit correctement plus souvent
     segments, info = m.transcribe(son, language=langue or None, word_timestamps=True, vad_filter=False,
-                                  beam_size=1, condition_on_previous_text=False)
+                                  beam_size=faisceau, condition_on_previous_text=False,
+                                  initial_prompt=consigne or None)
     mots: list[dict] = []
     for seg in segments:
         for k, w in enumerate(seg.words or []):

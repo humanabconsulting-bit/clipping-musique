@@ -26,7 +26,8 @@ runs:
       run: |
         if [ "${{ inputs.lourd }}" = "true" ]; then
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-core > /dev/null
-          pip install -q -r requirements.txt
+          pip install -q torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -q -r requirements.txt demucs
         else
           pip install -q requests
         fi
@@ -37,4 +38,5 @@ runs:
         path: |
           ~/.cache/huggingface
           ~/.cache/clipping-musique
-        key: modeles-v1
+          ~/.cache/torch
+        key: modeles-v2

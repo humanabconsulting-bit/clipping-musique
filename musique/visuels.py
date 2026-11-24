@@ -118,6 +118,21 @@ def plans_clip(chemin: Path) -> list[dict]:
     return [dict(fiche, nom=chemin.name, chemin=str(chemin), origine="clip_artiste")]
 
 
+def filtrer_qualite(plans: list[dict], minimum: int, log=print) -> list[dict]:
+    """Écarte les vidéos trop petites (côté court < minimum px, ex. 720). « De bonnes vidéos ou rien. »"""
+    if not minimum:
+        return plans
+    bons = [p for p in plans if min(p.get("largeur", 0), p.get("hauteur", 0)) >= minimum or p.get("origine") == "demo"]
+    ecartes = [p["nom"] for p in plans if p not in bons]
+    if ecartes:
+        log(f"   {len(ecartes)} vidéo(s) écartée(s) car en trop basse qualité (< {minimum}p) : "
+            + ", ".join(ecartes[:6]) + ("…" if len(ecartes) > 6 else ""), "alerte")
+    if not bons:
+        raise VisuelsRefuses(f"aucune vidéo en qualité suffisante ({minimum}p minimum) : envoie des vidéos en HD "
+                             "(fichiers d'origine par WeTransfer, pas par WhatsApp), ou baisse le réglage qualite_min_px")
+    return bons
+
+
 def chemin_plan(p: dict) -> Path:
     if p.get("chemin"):
         return Path(p["chemin"])

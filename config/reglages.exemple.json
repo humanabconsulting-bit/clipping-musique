@@ -19,12 +19,12 @@
   "duree_min_secondes": 15,
   "duree_max_secondes": 30,
   "modele_whisper": "small",
-  "modele_whisper_paroles": "medium",
+  "modele_whisper_paroles": "large-v3-turbo",
   "transcrire_morceau": true,
-  "separer_voix": false,
+  "separer_voix": true,
   "langue": null,
   "visuels_defaut": "banque",
-  "zooms": true,
+  "zooms": false,
   "taux_visages_min": 0.25,
   "budget_montage_minutes": 50,
   "hashtags": "#RapFR #Rap",
@@ -72,5 +72,22 @@
   "etalonnage": {
     "lifestyle": "sombre",
     "son": "sombre"
-  }
+  },
+  "qualite_min_px": 720,
+  "faisceau_whisper": 5,
+  "paroles_en_ligne": true,
+  "masquer_mots_douteux": true,
+  "seuil_mots_douteux": 0.3,
+  "vocabulaire": [
+    "wesh",
+    "frérot",
+    "khoya",
+    "sah",
+    "bendo",
+    "la street",
+    "oseille",
+    "bécane",
+    "binks"
+  ],
+  "corrections": {}
 }

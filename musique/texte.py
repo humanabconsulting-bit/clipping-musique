@@ -147,11 +147,16 @@ def _neon(mots: list[dict], duree: float, couleurs: tuple, y: int) -> list[str]:
             texte_mot = f"{{\\fs{int(taille * 0.42)}}}{b['petit']}\\N{{\\fs{taille}}}{b['mot']}"
         apparition = "\\fscx118\\fscy118\\t(0,90,\\fscx100\\fscy100)"
         debut_t, fin_t = _t(max(b["debut"], 0)), _t(fin)
-        # couche 1 : halo (même couleur, flouté, transparent) ; couche 2 : le mot net
-        ev.append(f"Dialogue: 3,{debut_t},{fin_t},Neon,,0,0,0,,{{\\an5\\pos(540,{y})\\fs{taille}"
-                  f"\\c{couleur}\\3c{couleur}\\bord14\\blur22\\alpha&H48&{apparition}}}{texte_mot}")
-        ev.append(f"Dialogue: 4,{debut_t},{fin_t},Neon,,0,0,0,,{{\\an5\\pos(540,{y})\\fs{taille}"
-                  f"\\c{couleur}\\3c&H101010&\\bord1.5\\blur0.6{apparition}}}{texte_mot}")
+        # 4 couches : ombre douce (lisibilité sur fond clair), halo large discret, halo serré, lettres nettes
+        pos = f"\\an5\\pos(540,{y})\\fs{taille}"
+        ev.append(f"Dialogue: 2,{debut_t},{fin_t},Neon,,0,0,0,,{{{pos}\\c&H000000&\\3c&H000000&\\bord10\\blur18"
+                  f"\\alpha&H90&{apparition}}}{texte_mot}")
+        ev.append(f"Dialogue: 3,{debut_t},{fin_t},Neon,,0,0,0,,{{{pos}\\c{couleur}\\3c{couleur}\\bord7\\blur16"
+                  f"\\alpha&HB0&{apparition}}}{texte_mot}")
+        ev.append(f"Dialogue: 4,{debut_t},{fin_t},Neon,,0,0,0,,{{{pos}\\c{couleur}\\3c{couleur}\\bord2.5\\blur4"
+                  f"\\alpha&H60&{apparition}}}{texte_mot}")
+        ev.append(f"Dialogue: 5,{debut_t},{fin_t},Neon,,0,0,0,,{{{pos}\\c{couleur}\\bord0\\shad0\\blur0.4"
+                  f"{apparition}}}{texte_mot}")
     return ev
 
 

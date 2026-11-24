@@ -227,7 +227,8 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
                     for i, m in enumerate("ceci est un test du mode démo sans paroles réelles".split())]
             origine, langue = "demo", "fr"
         else:
-            mots, langue, origine = paroles.paroles_passage(audio_p, d, cfg, f_paroles, c["debut"], log=log)
+            mots, langue, origine = paroles.paroles_passage(audio_p, d, cfg, f_paroles, c["debut"], log=log,
+                                                            fiche=fiche, titre=c.get("titre_son", ""))
         c.update(paroles_source=origine, langue=langue, paroles=" ".join(w["mot"] for w in mots))
         log(f"   paroles : {len(mots)} mot(s) ({origine}{', ' + langue if langue else ''})")
     # en mise en page react, le haut est le visage du streamer : pas d'accroche sauf si demandée exprès
@@ -275,6 +276,7 @@ def monter_un(c: dict, params: dict, cfg: dict, etat: dict, log) -> Path:
     else:
         plans = _visuels_pour(c, params, cfg, fiche, log)
         segs = montage_beat.coupes(analyse, c["debut"], c["fin"])
+        plans = visuels.filtrer_qualite(plans, int(cfg.get("qualite_min_px", 720)), log)
         choix = visuels.choisir_plans(plans, segs, c["id"])
         chemins = [visuels.chemin_plan(x["plan"]) for x in choix]
         c["visuels_source"] = choix[0]["origine"] if choix else ""
